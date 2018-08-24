@@ -1,3 +1,7 @@
+var pos = [0,0]
+var 
+function(moveUp)
+
 var n = 1
 var monsterHealth = 20
 var playerHealth = 50
