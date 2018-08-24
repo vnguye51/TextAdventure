@@ -1,0 +1,22 @@
+{
+  "name": "textadventure",
+  "version": "1.0.0",
+  "description": "TextAdventure Mockup",
+  "main": "map.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/vnguye51/TextAdventure.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/vnguye51/TextAdventure/issues"
+  },
+  "homepage": "https://github.com/vnguye51/TextAdventure#readme",
+  "dependencies": {
+    "inquirer": "^6.2.0"
+  }
+}
