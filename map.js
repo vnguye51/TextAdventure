@@ -5,12 +5,15 @@ var mapArray =
 ['l1','$','','l2,t','','$','l3'],
 ['!','l1','','','l3','t']]
 
-var map = {}
+var myMap = {}
 
-for(var i = 0;mapArray[0].length; i++){
-    for(var j = 0; mapArray.length; j++){
-        map[i,j] = mapArray[i][j]
+for(var j = 0; j < mapArray[0].length; j++){
+    for(var i = 0; i < mapArray.length; i++){
+        console.log(i,j)
+        myMap[[i,j]] = mapArray[i][j]
     }
 }
 
-console.log(map)
+exports.xbounds = [0,mapArray.length] 
+exports.ybounds = [0,mapArray[0].length]
+exports.map = myMap

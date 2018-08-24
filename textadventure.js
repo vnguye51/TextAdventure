@@ -1,7 +1,17 @@
+var mapdata = require('./map.js')
 var pos = [0,0]
-var 
-function(moveUp)
-
+function moveUp(){
+    pos = [pos[0],pos[1]+=1]
+}
+function moveDown(){
+    pos = [pos[0],pos[1]-=1]
+}
+function moveLeft(){
+    pos = [pos[0]-=1,pos[1]]
+}
+function moveRight(){
+    pos = [pos[0]+=1,pos[1]]
+}
 var n = 1
 var monsterHealth = 20
 var playerHealth = 50
