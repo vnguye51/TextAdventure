@@ -1,87 +1,118 @@
-var mapdata = require('./map.js')
-var pos = [0,0]
-function moveUp(){
-    pos = [pos[0],pos[1]+=1]
-}
-function moveDown(){
-    pos = [pos[0],pos[1]-=1]
-}
-function moveLeft(){
-    pos = [pos[0]-=1,pos[1]]
-}
-function moveRight(){
-    pos = [pos[0]+=1,pos[1]]
-}
-var n = 1
-var monsterHealth = 20
-var playerHealth = 50
-var secretTechnique
-var start = [
-    {
-        type: "input",
-        message: "What is your name?",
-        name: "username"
-    },
-    {
-        type: "checkbox",
-        message: "Choose your weapon",
-        name: "confirm",
-        choices: ['Sword','Gun','Bow','Magic']
-    },
-    {
-        type: "list",
-        message: "What is your dream?",
-        choices: ["Money.", "To defeat the demon king", "To become famous", "To become the strongest"],
-        name: "dream"
-    },
-    {
-        type: "password",
-        message: "What is your secret ability?",
-        name: 'secret'
-    },
-    {
-      type: "confirm",
-      message: "Are you sure:",
-      name: "confirm",
-      default: true
-    },
+//Initialize items
+var events = require('./events.js')
+var inquirer = require("inquirer");
 
-  ]
-var battle = [{
-    type: 'list',
-    message: "Choose your action",
-    choices: ['Attack','Defend','Run','Secret'],
-    name: 'battleChoice'
-}]
+var player = {}
+
+
+
+
+
+function start(){
+    var start = [
+        {
+            type: "input",
+            message: "What is your name?",
+            name: "username"
+        },
+        {
+            type: "checkbox",
+            message: "Choose your boon",
+            name: "weapon",
+            choices: ['Sword','Gun','Bow']
+        },
+        {
+            type: "list",
+            message: "What is your dream?",
+            choices: ["Money", "To defeat the demon king", "To become famous", "To become the strongest"],
+            name: "dream"
+        },
+        {
+            type: "input",
+            message: "What is your secret ability?",
+            name: 'secret'
+        },
+        {
+          type: "confirm",
+          message: "Are you sure:",
+          name: "confirm",
+          default: true
+        },
+    
+      ]
+    inquirer.prompt(start)
+    .then(function(response) {
+        if (response.confirm) {
+            //initialize player values based on inputs
+            player.secret = secret
+            player.weapon = 'dagger'
+            player.name = response.name
+            player.dream = response.dream
+            player.attack = 8
+            player.hp = 36
+            player.level = 1
+            player.pos = 0
+            console.log(`A warm light engulfs your body. \n 
+                         When you come to you find yourself in a clearing of a forest. \n
+                         `)
+            move()
+        }
+        else {
+            //start the prompt over
+            inquirer.prompt(start)
+        }
+      });
+}
+
+function move(){
+    var move = [{
+        type: 'list',
+        message: "Which way to go?",
+        choices: ['Left','Right'],
+        name: 'direction'
+    }]
+
+    inquirer.prompt(move)
+        .then(function(response){
+            if (response.name == 'Left'){
+                moveNorth()
+            }
+            else if (response.name == 'Right'){
+                moveSouth()
+            }
+            else if (response.name == 'West'){
+                moveWest()
+            }
+            else if (response.name == 'East'){
+                moveEast()
+            }
+        })
+}
 
 function battleTurn(){
+    var battle = [{
+        type: 'list',
+        message: "Choose your action",
+        choices: ['Attack','Defend','Run','Secret'],
+        name: 'battleChoice'
+    }]
     inquirer.prompt(battle)
         .then(function(inquirerResponse){
             if (inquirerResponse.battleChoice == 'Secret'){
-                console.log(secretTechnique+'!!!')
                 monsterHealth -= 40
-                console.log("You deal 40 damage")
 
             }
             else{
                 monsterHealth -= 5
-                console.log('You deal 5 damage')
             }
-            if (playerHealth <= 0){
-                console.log('You lose!')
+            if (player.hp <= 0){
                 return
             }
-            if (monsterHealth <= 0){
-                console.log('You Win!')
-                console.log('You gain 20 exp')
-                monsterHealth = 40
+            if (monster.hp <= 0){
                 return nextBattle()
             }
             else{
                 playerHealth -= 5
-                console.log("You take 5 damage back")
-                console.log("Player HP: " + playerHealth)
-                console.log("Monster HP: " + monsterHealth)
                 battleTurn()
             }
         })
@@ -93,18 +124,8 @@ function nextBattle(){
       return battleTurn()
 }
 
-var inquirer = require("inquirer");
 
-inquirer.prompt(start)
-    .then(function(inquirerResponse) {
-    if (inquirerResponse.confirm) {
-        secretTechnique = inquirerResponse.secret
-        nextBattle()
-    }
-    else {
-      console.log("\nThat's okay " + inquirerResponse.username + ", come again when you are more sure.\n");
-    }
-  });
+
 
 
   
