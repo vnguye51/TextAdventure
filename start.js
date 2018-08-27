@@ -234,21 +234,24 @@ var battleTurn = function(monster){
 }
 
 function inventory(){
+    var itemArray = []
+    for(var i = 0;i < player.items.length; i++){
+        itemArray.push({name:player.items[i],value:i})
+    }
     var prompt = [{
         type: 'list',
         message: 'You look through your rucksack \n' + player.gold + ' gold \n',
-        choices: player.items.concat('Cancel'),
-        name: 'itemChoice'
+        choices: itemArray.concat('Cancel'),
+        name: 'choice'
     }]
 
     queuePrompt(prompt,function(response){
-        if(response.itemChoice == 'Cancel'){
+        if(response.choice == 'Cancel'){
             return queuePrompt(pausedPrompt,pausedCallback)
         }
-        delete player.items[response.itemChoice]
-        console.log(player.items)
-        console.log(response.itemChoice)
-        return queueMessage([potionList[response.itemChoice].effect])
+        queueMessage([potionList[player.items[response.choice]].effect])
+        player.items.splice(response.choice,1)
+        return
     })
 }
 
