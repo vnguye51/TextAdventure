@@ -12,7 +12,7 @@ var player = {
     pos : 0,
     gold : 100,
     items: ['Health Potion'],
-    relics: [],
+    relics: ['Relic0'],
 
 }
 
@@ -198,7 +198,18 @@ function move(){
     queueMessage(messages)
 }
 
-var battleTurn = function(monster){
+function preBattle(monster){
+    ///CHECK FOR RELICS///
+    var messages = []
+    for(var i = 0; i < player.relics.length; i++){
+        messages.push(relicList[player.relics[i]].message)
+        relicList[player.relics[i]].effects()
+    }
+    messages.push(function(){battleTurn(monster)})
+    queueMessage(messages)
+}
+
+function battleTurn(monster){
     var prompt = [{
         type: 'list',
         message: "Choose your action",
@@ -206,6 +217,7 @@ var battleTurn = function(monster){
         name: 'choice'
     }]
     function callback(response){
+
         var messages = []
         if (player.hp <= 0){
             messages = messages.concat(["You Died."])
@@ -315,11 +327,14 @@ potionList = {
 
 
 ////Relic List/////////
-function Relic(cost,effects){
+function Relic(cost,message,effects){
     this.effects = effects
     this.cost = cost
+    this.message = message
 }
-var relic0 = new Relic(150,function(){
+var relic0 = new Relic(150,'relic0 empowers you. +5ATT',function(){
+    player.attack += 5
+    
 })
 var relic1 = new Relic(150,function(){
 
@@ -399,7 +414,7 @@ var campfire = {
             }
             if(response.choice == 'Forge'){
                 player.attack += 3
-                queueMessage(['You spend the entire night sharpening your blade','Attack: ' + player.att + '\n', move])
+                queueMessage(['You spend the entire night sharpening your blade','Attack: ' + player.attack + '\n', move])
                 return
             }
         }
@@ -415,7 +430,7 @@ var monster = {
 
     event: function(){
         monster = new tier1Enemies.goblin()
-        queueMessage(['You charge the monster \n',function(){battleTurn(monster)}])
+        queueMessage(['You charge the monster \n',function(){preBattle(monster)}])
     }
 }
 
@@ -558,4 +573,4 @@ var unique = {
 }
 
 var events = [monster,unique]
-inventory()
+monster.event()
