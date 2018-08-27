@@ -17,6 +17,7 @@
   },
   "homepage": "https://github.com/vnguye51/TextAdventure#readme",
   "dependencies": {
-    "inquirer": "^6.2.0"
+    "inquirer": "^6.2.0",
+    "seed-random": "^2.2.0"
   }
 }
