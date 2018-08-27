@@ -216,6 +216,10 @@ var battleTurn = function(monster){
         }
         else{
             monster.hp -= player.attack
+            if (monster.hp <= 0 && response.choice == 'Attack'){
+                monster.hp -= player.attack
+                messages = messages.concat(["You deal a lethal blow!",move])
+            }
             messages = messages.concat(['You slash the monster for ' + player.attack + ' damage.',function(){monster.ai()}])
             
         }
@@ -419,8 +423,29 @@ tier1Enemies = {
 //////////////EVENTS///////////////
 
 
-var clearing = {
-    premessage: 'You look around. Nothing seems out of the ordinary.',
+var rest = {
+    premessage: 'There is a clearing up ahead. You will be able to safely rest there.',
+    event: function(){
+        var prompt = [{
+            type: 'list',
+            message: 'You set up a campfire.',
+            choices: [{name: 'Rest (+20hp)',value: 'Rest'}, {name: 'Forge (+2ATT)', value: 'Forge'}],
+            name: 'choice'
+        }]
+        function callback(response){
+            if(response.choice == "Rest"){
+                player.hp += 20
+                queueMessage(['You sleep soundly and wake feeling rejuvenated', 'HP: ' + player.hp + '\n', move])
+                return
+            }
+            if(response.choice == 'Forge'){
+                player.attack += 3
+                queueMessage(['You spend the entire night sharpening your blade','Attack: ' + player.att + '\n', move])
+                return
+            }
+        }
+        queuePrompt(prompt,callback)
+    }
 }
 
 var unique = {
@@ -460,7 +485,6 @@ var shop = {
                 return
             }
             player.items.push(response.choice)
-            console.log(player.items)
             shopArray.splice(shopArray.indexOf(response.choice),1)
             var prompt = [{
                 type: 'list',
@@ -481,7 +505,6 @@ var beggar = {
 }
 
 var shrine = {
-    premessage: "You see an altar in the distance",
     prompt:  [{
         type: 'list',
         message: 'You come across a shrine of the Goddess. \nA fountain is filled with clear spring water. \nIn the fountain you see some coins left as an offering.',
@@ -504,6 +527,6 @@ var shrine = {
     }
 }
 
-var events = [monster,shrine]
+var events = [monster,unique]
 
-monster.event()
+rest.event()
