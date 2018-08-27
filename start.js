@@ -245,129 +245,98 @@ function inventory(){
         if(response.itemChoice == 'Cancel'){
             return queuePrompt(pausedPrompt,pausedCallback)
         }
-        return queueMessage([potionList[response.itemChoice]])
+        delete player.items[response.itemChoice]
+        console.log(player.items)
+        console.log(response.itemChoice)
+        return queueMessage([potionList[response.itemChoice].effect])
     })
 }
 
 /////////ITEMS///////////
+
+function Potion(cost,effect){
+    this.cost = cost
+    this.effect = effect
+}
+
+var hpPot = new Potion(50,function(){
+    var prompt = [{
+        type: 'list',
+        message: 'Heals for 20 hp',
+        choices: ['Use','Cancel'],
+        name:'use'
+    }]
+
+    var callback = function(){
+        queueMessage([inventory])
+    }
+
+    queuePrompt(prompt,callback)
+})
+
+var defPot = new Potion(50,function(){
+    var prompt = [{
+        type: 'list',
+        message: 'Heals for 20 hp',
+        choices: ['Use','Cancel'],
+        name:'use'
+    }]
+})
+
+var strPot = new Potion(50,function(){
+    var prompt = [{
+        type: 'list',
+        message: 'Heals for 20 hp',
+        choices: ['Use','Cancel'],
+        name:'use'
+    }]
+})
+
+var firePot = new Potion(50,function(){
+    var prompt = [{
+        type: 'list',
+        message: 'Heals for 20 hp',
+        choices: ['Use','Cancel'],
+        name:'use'
+    }]
+})
+
+
 
 potionList = {
     'Health Potion' : hpPot,
     'Strength Potion' : strPot,
     'Defense Potion' : defPot,
     'Flame Potion' : firePot,
-    'Speed Potion': speedPot,//Double the number of attacks made, but halves base damage
 }
 
-potionArray = ['Health Potion', 'Strength Potion', 'Defense Potion', 'Flame Potion', 'Speed Potion']
 
-function hpPot(){
-    var prompt = [{
-        type: 'list',
-        message: 'Heals for 20 hp',
-        choices: ['Use','Cancel'],
-        name:'use'
-    }]
-    queuePrompt(prompt,function(response){
-        if(response.use == 'Use'){
-            player.hp += 20
-            player.items.splice(player.items.indexOf('Health Potion'),1)
-            queueMessage(['You gain 20 hp \n',function(){queuePrompt(pausedPrompt,pausedCallback)}])
-            return
-        }
-        queueMessage([inventory])
-    })
-}
-
-function strPot(){
-    var prompt = [{
-        type: 'list',
-        message: 'Heals for 20 hp',
-        choices: ['Use','Cancel'],
-        name:'use'
-    }]
-    queuePrompt(prompt,function(response){
-        if(response.use == 'Use'){
-            player.hp += 20
-            queueMessage(['You gain 20 hp', 'Player HP: '+ player.hp, function(){queuePrompt(pausedPrompt,pausedCallback)}])
-            return
-        }
-        queueMessage([inventory])
-    })
-}
-
-function defPot(){
-    var prompt = [{
-        type: 'list',
-        message: 'Heals for 20 hp',
-        choices: ['Use','Cancel'],
-        name:'use'
-    }]
-    queuePrompt(prompt,function(response){
-        if(response.use == 'Use'){
-            player.hp += 20
-            queueMessage(['You gain 20 hp',function(){queuePrompt(pausedPrompt,pausedCallback)}])
-            return
-        }
-        queueMessage([inventory])
-    })
-}
-
-function firePot(){
-    var prompt = [{
-        type: 'list',
-        message: 'Heals for 20 hp',
-        choices: ['Use','Cancel'],
-        name:'use'
-    }]
-    queuePrompt(prompt,function(response){
-        if(response.use == 'Use'){
-            player.hp += 20
-            queueMessage(['You gain 20 hp',function(){queuePrompt(pausedPrompt,pausedCallback)}])
-            return
-        }
-        queueMessage([inventory])
-    })
-}
-
-function speedPot(){
-    var prompt = [{
-        type: 'list',
-        message: 'Heals for 20 hp',
-        choices: ['Use','Cancel'],
-        name:'use'
-    }]
-    queuePrompt(prompt,function(response){
-        if(response.use == 'Use'){
-            player.hp += 20
-            queueMessage(['You gain 20 hp',function(){queuePrompt(pausedPrompt,pausedCallback)}])
-            return
-        }
-        queueMessage([inventory])
-    })
-}
 ////Relic List/////////
+function Relic(cost,effects){
+    this.effects = effects
+    this.cost = cost
+}
+var relic0 = new Relic(150,function(){
+})
+var relic1 = new Relic(150,function(){
+
+})
+var relic2 = new Relic(150,function(){
+    
+})
+var relic3 = new Relic(150,function(){
+    
+})
+var relic4 = new Relic(150,function(){
+    
+})
+
 var relicList ={
     'Relic0' : relic0,
     'Relic1' : relic1,
     'Relic2' : relic2,
     'Relic3' : relic3,
     'Relic4' : relic4,
-    'Relic5' : relic5,
-    'Relic6' : relic6,
-    'Relic7' : relic7,
-    'Relic8' : relic8,
-    'Relic9' : relic9,
-    'Relic10': relic10,
-    'Relic11': relic11,
-    'Relic12': relic12,
-    'Relic13': relic13,
-    'Relic14': relic14,
-    'Relic15': relic15,
-    'Relic16': relic16,
-    'Relic17': relic17,
-    'Relic18': relic18,
-    'Relic19': relic19,
 }
 
 var relicPool={
@@ -376,46 +345,7 @@ var relicPool={
     'Relic2' : relic2,
     'Relic3' : relic3,
     'Relic4' : relic4,
-    'Relic5' : relic5,
-    'Relic6' : relic6,
-    'Relic7' : relic7,
-    'Relic8' : relic8,
-    'Relic9' : relic9,
-    'Relic10': relic10,
-    'Relic11': relic11,
-    'Relic12': relic12,
-    'Relic13': relic13,
-    'Relic14': relic14,
-    'Relic15': relic15,
-    'Relic16': relic16,
-    'Relic17': relic17,
-    'Relic18': relic18,
-    'Relic19': relic19,
 }
-
-function relic0(){}
-function relic1(){}
-function relic2(){}
-function relic3(){}
-function relic4(){}
-function relic5(){}
-function relic6(){}
-function relic7(){}
-function relic8(){}
-function relic9(){}
-function relic10(){}
-function relic11(){}
-function relic12(){}
-function relic13(){}
-function relic14(){}
-function relic15(){}
-function relic16(){}
-function relic17(){}
-function relic18(){}
-function relic19(){}
-
-
-
 ////////////Enemy List////////////////
 tier1Enemies = {
     goblin: function(){
@@ -491,13 +421,20 @@ var shop = {
     event: function(){
         
         var shopArray = []
-        for(var i = 0; i < 5; i++){
+        for(var i = 0; i < 3; i++){
             var item = Object.keys(relicPool)[Math.floor(Math.random()*Object.keys(relicPool).length)]
-            shopArray.push(item)
+            shopArray.push({name: item + ' ' + relicPool[item].cost+'g', value: item})
         }
+
+        var potionArray = []
+        for(key in potionList){
+            potionArray.push({name: key + ' ' + potionList[key].cost+'g',value: key})
+        }
+
+
         var prompt = [{
             type: 'list',
-            message: "Come in and take a look at my wares!",
+            message: "Come in and take a look at my wares!" + player.gold + ' gold',
             choices: shopArray.concat(potionArray,'Leave'),
             name: 'choice'
         }]
@@ -507,11 +444,28 @@ var shop = {
                 queueMessage(['Come again anytime! \n', move])
                 return
             }
-            player.items.push(response.choice)
-            delete relicPool[response.choice]
-            // if(relicList[response.choice]){ i think this is useless
-            //     relicList
-            // }
+            if(relicPool[response.choice]){
+                if (player.gold >= relicPool[response.choice].cost){
+                    player.relics.push(response.choice)
+                    delete relicPool[response.choice]
+                }
+                else{
+                    var prompt = [{
+                        type: 'list',
+                        message: "Please choose something else!",
+                        choices: shopArray.concat(potionArray,'Leave'),
+                        name: 'choice'
+                    }]
+                    queueMessage(['You don\'t have enough money!', function(){queuePrompt(prompt,callback)}])
+                    return
+                }
+            }
+            else{
+                if(player.gold >= potionList[response.choice].cost){
+                    player.items.push(response.choice)
+                }
+            }
+
             shopArray.splice(shopArray.indexOf(response.choice),1)
             var prompt = [{
                 type: 'list',
@@ -546,7 +500,7 @@ var beggar = {
                 if (Math.floor(Math.random()*2) == 0){
                     player.gold -= 50
                     var randomRelic = Object.keys(relicPool)[Math.floor(Math.random()*Object.keys(relicPool).length)] //Grab a random key from the pool
-                    player.items.push(randomRelic)
+                    player.relics.push(randomRelic)
                     delete relicPool[randomRelic]
                 
                 queueMessage(['"Thanks so much! Here is a trinket I found.', 'May it help you on your journey', 'Gained: ' + randomRelic, player.gold+' gold \n', move])
@@ -601,5 +555,4 @@ var unique = {
 }
 
 var events = [monster,unique]
-
-beggar.event()
+inventory()
