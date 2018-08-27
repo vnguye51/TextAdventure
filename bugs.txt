@@ -1,0 +1,1 @@
+You cannot currently only have one of each potion due to the way the object is accessed

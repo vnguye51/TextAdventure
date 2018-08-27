@@ -10,7 +10,10 @@ var player = {
     defend : false,
     hp : 36,
     pos : 0,
+    gold : 100,
     items: ['Health Potion'],
+    relics: [],
+
 }
 
 
@@ -233,10 +236,11 @@ var battleTurn = function(monster){
 function inventory(){
     var prompt = [{
         type: 'list',
-        message: 'You look through your rucksack',
+        message: 'You look through your rucksack \n' + player.gold + ' gold \n',
         choices: player.items.concat('Cancel'),
         name: 'itemChoice'
     }]
+
     queuePrompt(prompt,function(response){
         if(response.itemChoice == 'Cancel'){
             return queuePrompt(pausedPrompt,pausedCallback)
@@ -267,6 +271,7 @@ function hpPot(){
     queuePrompt(prompt,function(response){
         if(response.use == 'Use'){
             player.hp += 20
+            player.items.splice(player.items.indexOf('Health Potion'),1)
             queueMessage(['You gain 20 hp \n',function(){queuePrompt(pausedPrompt,pausedCallback)}])
             return
         }
@@ -363,7 +368,29 @@ var relicList ={
     'Relic17': relic17,
     'Relic18': relic18,
     'Relic19': relic19,
-    'Relic20': relic20,
+}
+
+var relicPool={
+    'Relic0' : relic0,
+    'Relic1' : relic1,
+    'Relic2' : relic2,
+    'Relic3' : relic3,
+    'Relic4' : relic4,
+    'Relic5' : relic5,
+    'Relic6' : relic6,
+    'Relic7' : relic7,
+    'Relic8' : relic8,
+    'Relic9' : relic9,
+    'Relic10': relic10,
+    'Relic11': relic11,
+    'Relic12': relic12,
+    'Relic13': relic13,
+    'Relic14': relic14,
+    'Relic15': relic15,
+    'Relic16': relic16,
+    'Relic17': relic17,
+    'Relic18': relic18,
+    'Relic19': relic19,
 }
 
 function relic0(){}
@@ -386,7 +413,6 @@ function relic16(){}
 function relic17(){}
 function relic18(){}
 function relic19(){}
-function relic20(){}
 
 
 
@@ -423,12 +449,12 @@ tier1Enemies = {
 //////////////EVENTS///////////////
 
 
-var rest = {
+var campfire = {
     premessage: 'There is a clearing up ahead. You will be able to safely rest there.',
     event: function(){
         var prompt = [{
             type: 'list',
-            message: 'You set up a campfire.',
+            message: 'You enter the clearing .You set up a campfire.',
             choices: [{name: 'Rest (+20hp)',value: 'Rest'}, {name: 'Forge (+2ATT)', value: 'Forge'}],
             name: 'choice'
         }]
@@ -448,10 +474,7 @@ var rest = {
     }
 }
 
-var unique = {
-    premessage: 'Thick trees obscure your view on this path',
-    uniquePool: [beggar,shrine]
-}
+
 
 var monster = {
     premessage: 'You see a monster in the distance',
@@ -469,7 +492,7 @@ var shop = {
         
         var shopArray = []
         for(var i = 0; i < 5; i++){
-            var item = Object.keys(relicList)[Math.floor(Math.random()*Object.keys(relicList).length)]
+            var item = Object.keys(relicPool)[Math.floor(Math.random()*Object.keys(relicPool).length)]
             shopArray.push(item)
         }
         var prompt = [{
@@ -485,6 +508,10 @@ var shop = {
                 return
             }
             player.items.push(response.choice)
+            delete relicPool[response.choice]
+            // if(relicList[response.choice]){ i think this is useless
+            //     relicList
+            // }
             shopArray.splice(shopArray.indexOf(response.choice),1)
             var prompt = [{
                 type: 'list',
@@ -501,7 +528,38 @@ var shop = {
 }
 
 var beggar = {
-    message: "You meet a beggar"
+    message: "You meet a beggar",
+    event: function(){
+        var prompt = [{
+            type: 'list',
+            message: '"Alms for the poor?"\n'+player.gold+' gold \n',
+            choices: [{name: 'Give gold (-50 gold, 50% chance for relic)', value: 'Give'}, {name: 'Leave', value: 'Leave'}],
+            name: 'choice'
+        }]
+
+        var callback = function(response){
+            if (response.choice == 'Give'){
+                if(player.gold < 50){
+                    queueMessage(['...You can keep what little you have', move])
+                    return
+                }
+                if (Math.floor(Math.random()*2) == 0){
+                    player.gold -= 50
+                    var randomRelic = Object.keys(relicPool)[Math.floor(Math.random()*Object.keys(relicPool).length)] //Grab a random key from the pool
+                    player.items.push(randomRelic)
+                    delete relicPool[randomRelic]
+                
+                queueMessage(['"Thanks so much! Here is a trinket I found.', 'May it help you on your journey', 'Gained: ' + randomRelic, player.gold+' gold \n', move])
+                return
+                }
+                queueMessage(['"May the goddess bless you, kind sir..."', move])
+            }
+            if (response.choice == 'Leave'){
+                queueMessage(['"..."',player.gold+' gold \n', move])
+            }
+        }
+        queuePrompt(prompt,callback)
+    }
 }
 
 var shrine = {
@@ -527,6 +585,21 @@ var shrine = {
     }
 }
 
+var unique = {
+    premessage: 'Thick trees obscure your view on this path',
+    uniquePool: [beggar,shrine,campfire,monster],
+    event: function(){
+        var randomEvent = this.uniquePool[Math.floor(Math.random()*this.uniquePool.length)]
+        var messages = []
+        messages.push('You enter the thicket\n')
+        if (randomEvent.premessage){
+            messages.push(randomEvent.premessage)
+        }
+        messages.push( function(){randomEvent.event()})
+        queueMessage(messages)
+    }
+}
+
 var events = [monster,unique]
 
-rest.event()
+beggar.event()
