@@ -7,12 +7,16 @@ var seed = require('seed-random')
 var player = {
     weapon : 1,
     attack : 8,
-    defend : false,
+    tempAtt: 0,
+    totalAtt: 0,
+    multAtt: 1,
+    defense: 0,
+    tempDef: 0,
     hp : 36,
     pos : 0,
     gold : 100,
     items: ['Health Potion'],
-    relics: ['Relic0'],
+    relics: [],
 
 }
 
@@ -198,13 +202,37 @@ function move(){
     queueMessage(messages)
 }
 
+//Battle: preBattle -> TurnChecks ->  
+
 function preBattle(monster){
     ///CHECK FOR RELICS///
     var messages = []
     for(var i = 0; i < player.relics.length; i++){
-        messages.push(relicList[player.relics[i]].message)
-        relicList[player.relics[i]].effects()
+        if(relicList[player.relics[i]].preEffect){
+            relicList[player.relics[i]].preEffect(monster)
+            messages.push(relicList[player.relics[i]].preMessage)
+            messages.push('')
+        }
     }
+    messages.push(function(){preTurn(monster)})
+    queueMessage(messages)
+}
+
+function preTurn(monster){
+    var messages = []
+    for(var i = 0; i < player.relics.length; i++){
+        if(relicList[player.relics[i]].conEffect){
+            relicList[player.relics[i]].conEffect(monster)
+            messages.push(relicList[player.relics[i]].conMessage)
+            messages.push('')
+        }
+    }
+    player.totalAtt = (player.attack + player.tempAtt) * player.multAtt
+    messages.push('Your attack will deal ' + player.totalAtt + ' damage.')
+    messages.push(monster.warning)
+    messages.push('You have ' + player.defense + ' DEF')
+    messages.push('Player HP: ' + player.hp)
+    messages.push(monster.name + ': ' + monster.hp)
     messages.push(function(){battleTurn(monster)})
     queueMessage(messages)
 }
@@ -217,7 +245,6 @@ function battleTurn(monster){
         name: 'choice'
     }]
     function callback(response){
-
         var messages = []
         if (player.hp <= 0){
             messages = messages.concat(["You Died."])
@@ -225,24 +252,37 @@ function battleTurn(monster){
         else if (response.choice == 'Item'){
             messages = messages.concat([inventory])
         }
-        else if (monster.hp <= 0 && response.choice == 'Attack'){
-            monster.hp -= player.attack
-            messages = messages.concat(["You deal a lethal blow!",move])
-        }
         else{
-            monster.hp -= player.attack
+            monster.hp -= player.totalAtt
             if (monster.hp <= 0 && response.choice == 'Attack'){
-                monster.hp -= player.attack
-                messages = messages.concat(["You deal a lethal blow!",move])
+                monster.hp -= player.totalAtt
+                messages = messages.concat(["You deal a lethal blow!",function(){postBattle(monster)}])
             }
-            messages = messages.concat(['You slash the monster for ' + player.attack + ' damage.',function(){monster.ai()}])
+            messages = messages.concat(['You slash the monster for ' + player.totalAtt + ' damage.',function(){monster.ai()}])
             
         }
         queueMessage(messages)
     }
     pausedPrompt = prompt
     pausedCallback = callback
-    queueMessage(['Player HP: ' + player.hp, monster.name + ': ' + monster.hp, monster.warning, function(){queuePrompt(prompt,callback)}])
+    queueMessage([function(){queuePrompt(prompt,callback)}])
+}
+
+function postBattle(monster){
+    player.tempAtt = 0
+    player.tempDef = 0
+    var messages = []
+    for(var i = 0; i < player.relics.length; i++){
+        if(relicList[player.relics[i]].postEffect){
+            relicList[player.relics[i]].postEffect(monster)
+            messages.push(relicList[player.relics[i]].postMessage)
+            messages.push('')
+        }
+    }
+    messages.push(monster.death)
+    messages.push('You loot ' + monster.gold + 'g')
+    messages.push(move)
+    queueMessage(messages)
 }
 
 function inventory(){
@@ -283,6 +323,7 @@ var hpPot = new Potion(50,function(){
     }]
 
     var callback = function(){
+        player.hp += 20
         queueMessage([inventory])
     }
 
@@ -327,54 +368,177 @@ potionList = {
 
 
 ////Relic List/////////
-function Relic(cost,message,effects){
-    this.effects = effects
+///Relic logic is separated into three parts they can be called either in the pre,continiuing, or post battle phases.
+// During each phase the player's relics are looped through and checked if they have any pre,continuing, or post effects.
+function Relic(cost){
     this.cost = cost
-    this.message = message
 }
-var relic0 = new Relic(150,'relic0 empowers you. +5ATT',function(){
-    player.attack += 5
-    
-})
-var relic1 = new Relic(150,function(){
+var relic0 = new Relic(150)
+    relic0.preMessage = 'relic0 empowers you. +5ATT'
+    relic0.preEffect = function(){
+        player.tempAtt += 5
+    }
+var relic1 = new Relic(150)
+    relic1.preMessage = 'relic1 steels your skin. +5DEF'
+    relic1.preEffect = function(){
+    player.tempDef += 5
+    }
 
-})
-var relic2 = new Relic(150,function(){
+//Every enemy killed gives +1 ATT
+var blueLantern = new Relic(150)   
+
+    blueLantern.storedDef = 0
+    blueLantern.preMessage = 'There are no souls in your Blue Lantern.'
+    blueLantern.preEffect = function(){
+        player.tempDef += blueLantern.storedDef
+    }
+    blueLantern.postMessage = 'The monster\'s soul is sucked into your Blue Lantern'
+    blueLantern.postEffect = function(){
+        blueLantern.storedDef += 1
+        blueLantern.preMessage = 'There are ' + blueLantern.storedDef + ' souls in your Blue Lantern.' 
+    }
+
+var redLantern = new Relic(150)   
+
+    redLantern.storedAtt = 0
+    redLantern.preMessage = 'There are no souls in your Red Lantern.'
+    redLantern.preEffect = function(){
+        player.tempAtt += redLantern.storedAtt
+    }
+    redLantern.postMessage = 'The monster\'s soul is sucked into your Red Lantern'
+    redLantern.postEffect = function(){
+        redLantern.storedAtt += 1
+        redLantern.preMessage = 'There are ' + redLantern.storedAtt + ' souls in your Red Lantern.' 
+    }
+
     
-})
-var relic3 = new Relic(150,function(){
-    
-})
-var relic4 = new Relic(150,function(){
-    
-})
+
+var relic3 = new Relic(150) //Enemies drop 50% more gold
+
+    relic3.postEffect = function(monster){
+        player.gold += Math.floor(monster.gold*0.5)
+        relic3.postMessage = 'Alchemical Scroll duplicates the gold dropped from the enemy ' + Math.floor(monster.gold*0.5) +'g'
+    }
+
+var turnwheel = new Relic(150)
+    turnwheel.countdown = 6
+    turnwheel.conEffect = function(){
+        turnwheel.countdown -= 1
+        if(turnwheel.countdown == 0){
+            turnwheel.countdown = 6
+            turnwheel.conMessage = 'The Turnwheel completes a cycle. Your blade blazes. Your attacks deal 5x damage this turn.'
+            player.multAtt *= 5//Total Att is recalculated every turn so no need to clean up
+        }
+        else{
+            turnwheel.conMessage = 'The Turnwheel rotates. '+ turnwheel.countdown + ' turns left.'
+        }
+    }
+
+var theCoin = new Relic(150)
+    theCoin.countdown = 1
+    theCoin.conEffect = function(){
+        theCoin.countdown -= 1
+        if(theCoin.countdown == 0){
+            theCoin.countdown = 2
+            theCoin.conMessage = 'The Coin flips. +5 ATT'
+            player.tempAtt += 5
+        }
+        else{
+            theCoin.conMessage = 'The Coin flips. +5 DEF'
+            player.tempDef += 5
+        }
+    }
+
+var effigy = new Relic(150)
+    //Need to add a check during the opponents damagestep
+    effigy.damageEffect = function(){
+        if (player.hp <= 0){
+            effigy.damageMessage = 'The effigy enters Death\'s Door in your stead.'
+            player.hp = 1
+            player.relics.splice(player.relics.indexOf('Effigy'),1)
+            ///Delete the relic keys on the next step
+            }
+        }
+
+var luckyDice = new Relic(150)
+    luckyDice.conEffect = function(){
+        var roll = Math.floor(Math.random()*6)
+        if(roll == 0){
+            luckyDice.conMessage = 'Unlucky. You roll a 0. You deal 0 damage this turn'
+            player.multAtt = 0
+        }
+        else{
+            luckyDice.conMessage = 'You roll a '+ roll + '.' + 'Your attacks deal ' + (roll+1) + 'x damage this turn.'
+            player.multAtt *= (roll+1)
+        }
+    }
+
+var midasHeart = new Relic(150)
+//For every 50 gold you have in your inventory gain +1 def
+
+var topsyTurvy = new Relic(150)
+//Swap your base attack with your base defense
+
+var whetStone = new Relic(150)
+//Double the effectiveness of sharpening at campfires
+
+var steelCross = new Relic(150)
+//Reflect half the damage blocked back to your opponent
+
+var steelHeart = new Relic(150)
+//Every turn gain +2 Def
+
+var doubleEdgedSword = new Relic(150)
+//You deal double damage but your opponent gains +10 ATT
+
+var kale = new Relic(150)
+//Gain +25 HP
+
+var broccoli = new Relic(150)
+//Gain +20 HP
+
+var bruseelSprouts = new Relic(150)
+//Gain +20 HP
+
+var cookingPan = new Relic(150)
+//Restore +8 HP after every fight
+
+var ritualDagger = new Relic(150)
+//Lose 3HP every attack but gain +10ATT  
 
 var relicList ={
     'Relic0' : relic0,
     'Relic1' : relic1,
-    'Relic2' : relic2,
+    'Red Lantern' : redLantern,
+    'Blue Lantern' : blueLantern,
     'Relic3' : relic3,
-    'Relic4' : relic4,
+    'Turnwheel' : turnwheel,
+    'The Coin' : theCoin,
 }
 
 var relicPool={
     'Relic0' : relic0,
     'Relic1' : relic1,
-    'Relic2' : relic2,
+    'Red Lantern' : redLantern,
+    'Blue Lantern' : blueLantern,
     'Relic3' : relic3,
-    'Relic4' : relic4,
+    'Turnwheel' : turnwheel,
+    'The Coin' : theCoin,
 }
 ////////////Enemy List////////////////
 tier1Enemies = {
     goblin: function(){
         this.hp = 30
         this.name = 'goblin'
-        this.attack= 5,
+        this.attack= 5
         this.warning = this.name + ' is about to attack for 5 damage.'
+        this.death = this.name + ' let\'s out a pained howl before falling silent.'
+        this.gold = 50
         this.attack1= function(){
             _this = this
-            player.hp -= this.attack
-            queueMessage(['Goblin attacks for 5 damage',function(){battleTurn(_this)}])
+            var damage = this.attack - player.defense
+            player.hp -= damage
+            queueMessage(['Goblin attacks for ' + damage + ' damage',function(){preTurn(_this)}])
             
         }
         this.ai = function(){
