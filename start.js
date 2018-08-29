@@ -1,8 +1,10 @@
 //Initialize items
-var inquirer = require("inquirer");
+// var inquirer = require("inquirer");
 var seed = require('seed-random')
 var relicList = require('./relics.js').relicList
 var relicPool = require('./relics.js').relicPool
+var queueMessage = require('./system.js').queueMessage
+var queuePrompt = require('./system.js').queuePrompt
 
 
 //Initialize player stats
@@ -17,41 +19,16 @@ var player = {
     maxHp : 36,
     hp : 36,
     pos : 0,
+    tier : 'tier1',
     gold : 100,
     items: ['Health Potion'],
-    relics: ['Micro Garden', 'Blood Ruby', 'Crimson Garnet'],
+    relics: [],
 
 }
 
 
 var pausedPrompt
 var pausedCallback
-
-function queuePrompt(prompt,callbackFunction){
-    setTimeout(function(){
-        inquirer.prompt(prompt)
-            .then(function(response){
-                callbackFunction(response)
-            })
-    },500)
-}
-
-function queueMessage(messages){
-    if(messages.length > 0){
-        if(typeof messages[0] == 'function'){
-            setTimeout(function(){
-                messages[0]()
-                messages.shift()
-            },500)
-            return
-        }
-        setTimeout(function(){
-            console.log(messages[0])
-            messages.shift()
-            queueMessage(messages)
-        },500)
-    }
-}
 
 
 function start(){
@@ -110,6 +87,12 @@ function start(){
 
 function move(){
     player.pos += 1
+    if(player.pos == 10){
+        player.tier = 'tier2'
+    }
+    else if(player.pos == 0){
+        player.tier = 'tier3'
+    }
     var messages = []
     for(var i = 0; i < player.relics.length; i++){
         if(relicList[player.relics[i]].moveEffect){
@@ -156,7 +139,7 @@ function move(){
     var move3 = [{
         type: 'list',
         message: 'Which way to go?',
-        choices: ['Left', 'Straight', 'Right'],
+        choices: ['Left', 'Right', 'Straight'],
         name: 'direction'
     }]
 
@@ -204,7 +187,7 @@ function move(){
                 if(response.direction == 'Left'){
                     return left.event()
                 }
-                else if (response.direcion == 'Right'){
+                if (response.direction == 'Right'){
                     return right.event()
                 }
                 return center.event()
@@ -271,7 +254,7 @@ function battleTurn(monster){
                 monster.hp -= player.totalAtt
                 messages = messages.concat(["You deal a lethal blow!",function(){postBattle(monster)}])
             }
-            messages = messages.concat(['You slash the monster for ' + player.totalAtt + ' damage.',function(){monster.ai()}])
+            messages = messages.concat(['You slash the monster for ' + player.totalAtt + ' damage.',function(){monster.ai(player)}])
             
         }
         queueMessage(messages)
@@ -294,7 +277,12 @@ function postBattle(monster){
     }
     messages.push(monster.death)
     messages.push('You loot ' + monster.gold + 'g')
-    messages.push(chooseRelic)
+    if(monster.relic){  
+        messages.push(chooseRelic)
+    }
+    else{
+        messages.push(move)
+    }
     queueMessage(messages)
 }
 
@@ -413,106 +401,117 @@ potionList = {
 }
 
 
-////Relic List/////////
-///Relic logic is separated into three parts they can be called either in the pre,continiuing, or post battle phases.
-// During each phase the player's relics are looped through and checked if they have any pre,continuing, or post effects.
-
-////////////Enemy List////////////////
+////ENEMIES////
 var tier1Enemies = {
-    goblin: function(){
-        this.hp = 30
-        this.name = 'Goblin'
-        this.attack = 5
-        this.damage = 5
-        this.warning = this.name + ' is about to attack for 5 damage.'
-        this.death = this.name + ' let\'s out a pained howl before falling silent.'
-        this.gold = 50
-        this.attack1= function(){
-            _this = this
-            var damage = this.attack - player.defense
-            player.hp -= damage
-            queueMessage(['Goblin attacks for ' + damage + ' damage',function(){preTurn(_this)}])
-            
-        }
-        this.ai = function(){
-            this.attack1()
-        }
-    },
-
-    orc: function(){
-        this.hp = 30
-        this.name = 'Orc'
-        this.attack = 8
-        this.damage = 8
-        this.warning = this.name + ' is about to attack for 5 damage.'
-        this.death = this.name + ' let\'s out a pained howl before falling silent.'
-        this.gold = 50
-        this.attack1= function(){
-            _this = this
-            var damage = this.attack - player.defense
-            player.hp -= damage
-            queueMessage(['Orc attacks for ' + damage + ' damage',function(){preTurn(_this)}])
-            
-        }
-        this.ai = function(){
-            this.attack1()
-        }
-    },
-
-    wizard: function(){
-        this.hp = 30
-        this.name = 'Wizard'
-        this.attack = 5
-        this.damage = 5
-        this.warning = this.name + ' is about to attack for 5 damage.'
-        this.death = 'You barbarian...'
-        this.gold = 50
-        this.attack1 = function(){
-            _this = this 
-            var calcDamage = this.damage - player.defense
-            player.hp -= calcDamage
-            this.warning = 'Wizard is chanting...'
-            queueMessage(['Wizard attacks for ' + calcDamage + ' damage',function(){preTurn(_this)}])
-        }
-        this.attack2 = function(){
-            _this = this
-            queueMessage(['The Wizard is starting to glow',function(){preTurn(_this)} ])            
-        }
-        this.attack3 = function(){
-            _this = this
-            queueMessage(['The Wizard is blazing!', function(){preTurn(_this)}])
-            this.warning = 'The Wizard is about to attack for 30 damage'
-            this.damage = 30
-        }
-        this.attack4 = function(){
-            _this = this
-            var calcDamage = this.damage - player.defense
-            player.hp -= calcDamage
-            this.warning = this.name + ' is about to attack for 5 damage.'
+    common : {
+        Goblin: function(){
+            this.hp = 30
+            this.name = 'Goblin'
+            this.attack = 5
             this.damage = 5
-            queueMessage(['Flames! I beseech thee!','Return us to cinders!', function(){preTurn(_this)}])
-        }
+            this.warning = this.name + ' is about to attack for 5 damage.'
+            this.death = this.name + ' let\'s out a pained howl before falling silent.'
+            this.gold = 50,
+            this.relic = false
+            this.attack1= function(player){
+                _this = this
+                var damage = this.attack - player.defense
+                player.hp -= damage
+                queueMessage(['Goblin attacks for ' + damage + ' damage',function(){preTurn(_this)}])
+                
+            }
+            this.ai = function(player){
+                this.attack1(player)
+            }
+        },
+    
+        Orc: function(){
+            this.hp = 30
+            this.name = 'Orc'
+            this.attack = 8
+            this.damage = 8
+            this.warning = this.name + ' is about to attack for 5 damage.'
+            this.death = this.name + ' let\'s out a pained howl before falling silent.'
+            this.gold = 50,
+            this.relic = false
+            this.attack1= function(player){
+                _this = this
+                var damage = this.attack - player.defense
+                player.hp -= damage
+                queueMessage(['Orc attacks for ' + damage + ' damage',function(){preTurn(_this)}])
+                
+            }
+            this.ai = function(player){
+                this.attack1(player)
+            }
+        },
+    
+        Wizard: function(){
+            this.hp = 30
+            this.name = 'Wizard'
+            this.attack = 5
+            this.damage = 5
+            this.warning = this.name + ' is about to attack for 5 damage.'
+            this.death = 'You barbarian...'
+            this.gold = 50,
+            this.relic = false
+            this.attack1 = function(player){
+                _this = this 
+                var calcDamage = this.damage - player.defense
+                player.hp -= calcDamage
+                this.warning = 'Wizard is chanting...'
+                queueMessage(['Wizard attacks for ' + calcDamage + ' damage',function(){preTurn(_this)}])
+            }
+            this.attack2 = function(player){
+                _this = this
+                queueMessage(['The Wizard is starting to glow',function(){preTurn(_this)} ])            
+            }
+            this.attack3 = function(player){
+                _this = this
+                queueMessage(['The Wizard is blazing!', function(){preTurn(_this)}])
+                this.warning = 'The Wizard is about to attack for 30 damage'
+                this.damage = 30
+            }
+            this.attack4 = function(player){
+                _this = this
+                var calcDamage = this.damage - player.defense
+                player.hp -= calcDamage
+                this.warning = this.name + ' is about to attack for 5 damage.'
+                this.damage = 5
+                queueMessage(['Flames! I beseech thee!','Return us to cinders!', function(player){preTurn(_this)}])
+            }
+            this.pattern = [this.attack1,this.attack2,this.attack3,this.attack4]
+            this.ai = function(player){
+                var attack = this.pattern[0]
+                console.log(attack)
+                attack(player)
+                this.pattern.push(this.pattern.shift)
+            }
+        },
     },
-
-    treant: function(){
-        this.hp = 30
-        this.name = 'Treant'
-        this.attack = 5
-        this.damage = 5
-        this.warning = this.name + ' is about to attack for 5 damage.'
-        this.death = this.name + ' let\'s out a pained howl before falling silent.'
-        this.gold = 50
-        this.attack1= function(){
-            _this = this
-            var damage = this.attack - player.defense
-            player.hp -= damage
-            queueMessage(['Treant attacks for ' + damage + ' damage',function(){preTurn(_this)}])
-            
-        }
-        this.ai = function(){
-            this.attack1()
-        }
-    },
+    
+    elite : {
+        Treant: function(){
+            this.hp = 30
+            this.name = 'Treant'
+            this.attack = 5
+            this.damage = 5
+            this.warning = this.name + ' is about to attack for 5 damage.'
+            this.death = this.name + ' let\'s out a pained howl before falling silent.'
+            this.gold = 50,
+            this.relic = true
+            this.attack1= function(player){
+                _this = this
+                var damage = this.attack - player.defense
+                player.hp -= damage
+                queueMessage(['Treant attacks for ' + damage + ' damage',function(){preTurn(_this)}])
+                
+            }
+            this.ai = function(player){
+                this.attack1(player)
+            }
+        },
+    }
 }//Forest theme
 
 var tier2Enemies = {
@@ -524,16 +523,17 @@ var tier2Enemies = {
         this.damage = 5
         this.warning = this.name + ' is about to attack for 5 damage.'
         this.death = this.name + ' let\'s out a pained howl before falling silent.'
-        this.gold = 50
-        this.attack1= function(){
+        this.gold = 50,
+        this.relic = false
+        this.attack1= function(player){
             _this = this
             var damage = this.attack - player.defense
             player.hp -= damage
             queueMessage(['Dire Wolf attacks for ' + damage + ' damage',function(){preTurn(_this)}])
             
         }
-        this.ai = function(){
-            this.attack1()
+        this.ai = function(player){
+            this.attack1(player)
         }
     },
 
@@ -544,16 +544,17 @@ var tier2Enemies = {
         this.damage = 5
         this.warning = this.name + ' is about to attack for 5 damage.'
         this.death = this.name + ' let\'s out a pained howl before falling silent.'
-        this.gold = 50
-        this.attack1= function(){
+        this.gold = 50,
+        this.relic = false
+        this.attack1= function(player){
             _this = this
             var damage = this.attack - player.defense
             player.hp -= damage
             queueMessage(['Shaman attacks for ' + damage + ' damage',function(){preTurn(_this)}])
             
         }
-        this.ai = function(){
-            this.attack1()
+        this.ai = function(player){
+            this.attack1(player)
         }
     },
 
@@ -564,16 +565,17 @@ var tier2Enemies = {
         this.damage = 5
         this.warning = this.name + ' is about to attack for 5 damage.'
         this.death = this.name + ' let\'s out a pained howl before falling silent.'
-        this.gold = 50
-        this.attack1= function(){
+        this.gold = 50,
+        this.relic = false
+        this.attack1= function(player){
             _this = this
             var damage = this.attack - player.defense
             player.hp -= damage
             queueMessage(['Mandragora attacks for ' + damage + ' damage',function(){preTurn(_this)}])
             
         }
-        this.ai = function(){
-            this.attack1()
+        this.ai = function(player){
+            this.attack1(player)
         }
     },
 
@@ -584,16 +586,17 @@ var tier2Enemies = {
         this.damage = 5
         this.warning = this.name + ' is about to attack for 5 damage.'
         this.death = this.name + ' let\'s out a pained howl before falling silent.'
-        this.gold = 50
-        this.attack1= function(){
+        this.gold = 50,
+        this.relic = true
+        this.attack1= function(player){
             _this = this
             var damage = this.attack - player.defense
             player.hp -= damage
             queueMessage(['Shaman King attacks for ' + damage + ' damage',function(){preTurn(_this)}])
             
         }
-        this.ai = function(){
-            this.attack1()
+        this.ai = function(player){
+            this.attack1(player)
         }
     },
 
@@ -609,16 +612,17 @@ var tier3Enemies = {
         this.damage = 5
         this.warning = this.name + ' is about to attack for 5 damage.'
         this.death = this.name + ' let\'s out a pained howl before falling silent.'
-        this.gold = 50
-        this.attack1= function(){
+        this.gold = 50,
+        this.relic = false
+        this.attack1= function(player){
             _this = this
             var damage = this.attack - player.defense
             player.hp -= damage
             queueMessage(['Royal Guard attacks for ' + damage + ' damage',function(){preTurn(_this)}])
             
         }
-        this.ai = function(){
-            this.attack1()
+        this.ai = function(player){
+            this.attack1(player)
         }
     },
 
@@ -629,16 +633,17 @@ var tier3Enemies = {
         this.damage = 5
         this.warning = this.name + ' is about to attack for 5 damage.'
         this.death = this.name + ' let\'s out a pained howl before falling silent.'
-        this.gold = 50
-        this.attack1= function(){
+        this.gold = 50,
+        this.relic = false
+        this.attack1= function(player){
             _this = this
             var damage = this.attack - player.defense
             player.hp -= damage
-            queueMessage(['Arch Wizard attacks for ' + damage + ' damage',function(){preTurn(_this)}])
+            queueMessage(['Arch Wizard attacks for ' + this.damage + ' damage',function(){preTurn(_this)}])
             
         }
-        this.ai = function(){
-            this.attack1()
+        this.ai = function(player){
+            this.attack1(player)
         }
     },
 
@@ -649,16 +654,17 @@ var tier3Enemies = {
         this.damage = 5
         this.warning = this.name + ' is about to attack for 5 damage.'
         this.death = this.name + ' let\'s out a pained howl before falling silent.'
-        this.gold = 50
-        this.attack1= function(){
+        this.gold = 50,
+        this.relic = true
+        this.attack1= function(player){
             _this = this
             var damage = this.attack - player.defense
             player.hp -= damage
             queueMessage(['Goblin attacks for ' + damage + ' damage',function(){preTurn(_this)}])
             
         }
-        this.ai = function(){
-            this.attack1()
+        this.ai = function(player){
+            this.attack1(player)
         }
     },
 
@@ -673,16 +679,17 @@ var uniqueEnemies = {
         this.damage = 5
         this.warning = this.name + ' is about to attack for 5 damage.'
         this.death = this.name + ' let\'s out a pained howl before falling silent.'
-        this.gold = 50
-        this.attack1= function(){
+        this.gold = 50,
+        this.relic = true
+        this.attack1= function(player){
             _this = this
             var damage = this.attack - player.defense
             player.hp -= damage
             queueMessage(['Mimic attacks for ' + damage + ' damage',function(){preTurn(_this)}])
             
         }
-        this.ai = function(){
-            this.attack1()
+        this.ai = function(player){
+            this.attack1(player)
         }
     },
 }
@@ -697,14 +704,15 @@ var bosses = {
         this.death = this.name + ' "This isn\'t over..." \n The Black Knight escapes into the mists...' 
         this.gold = 100
         this.turn = 0
-        this.attack1 = function(){
+        this.relic = true
+        this.attack1 = function(player){
             _this = this 
             var calcDamage = this.damage - player.defense
             player.hp -= this.damage 
             this.warning = this.name + 'is gathering strength.'
             queueMessage(['The Dark Knight swings his sword.', calcDamage +' damage!', function(){preTurn(_this)}])
         }
-        this.attack2 = function(){
+        this.attack2 = function(player){
             _this = this
             this.attack += 10
             this.damage = this.attack
@@ -712,29 +720,30 @@ var bosses = {
             queueMessage(['WRAH!', 'Now face me!', 'The Dark Knight gains +10ATT', function(){preTurn(_this)}])
         }
         this.pattern = [attack1,attack2]
-        this.ai = function(){
-            this.pattern[0]()
+        this.ai = function(player){
+            this.pattern[0](player)
             this.pattern.push(this.pattern.shift)
         }
     },
 
     hydra: function(){
         this.hp = 30
-        this.name = 'Royal Guard'
+        this.name = 'Hydra'
         this.attack = 5
         this.damage = 5
         this.warning = this.name + ' is about to attack for 5 damage.'
         this.death = this.name + ' let\'s out a pained howl before falling silent.'
-        this.gold = 50
-        this.attack1= function(){
+        this.gold = 50,
+        this.relic = true,
+        this.attack1= function(player){
             _this = this
             var damage = this.attack - player.defense
             player.hp -= damage
             queueMessage(['Royal Guard attacks for ' + damage + ' damage',function(){preTurn(_this)}])
             
         }
-        this.ai = function(){
-            this.attack1()
+        this.ai = function(player){
+            this.attack1(player)
         }
     },
 
@@ -746,15 +755,16 @@ var bosses = {
         this.warning = this.name + ' is about to attack for 5 damage.'
         this.death = this.name + ' let\'s out a pained howl before falling silent.'
         this.gold = 50
-        this.attack1= function(){
+        this.relic = true
+        this.attack1= function(player){
             _this = this
             var damage = this.attack - player.defense
             player.hp -= damage
             queueMessage(['Royal Guard attacks for ' + damage + ' damage',function(){preTurn(_this)}])
             
         }
-        this.ai = function(){
-            this.attack1()
+        this.ai = function(player){
+            this.attack1(player)
         }
     },
 
@@ -786,8 +796,13 @@ var bosses = {
     }
 }
 
-
-
+var enemies = {
+    tier1: tier1Enemies,
+    tier2: tier2Enemies,
+    tier3: tier3Enemies,
+    uniqueEnemies: uniqueEnemies,
+    bosses: bosses,
+}
 
 //////////////EVENTS///////////////
 
@@ -798,7 +813,7 @@ var campfire = {
         var prompt = [{
             type: 'list',
             message: 'You enter the clearing .You set up a campfire.',
-            choices: [{name: 'Rest (+20hp)',value: 'Rest'}, {name: 'Forge (+2ATT)', value: 'Forge'}],
+            choices: [{name: 'Rest (+20hp)',value: 'Rest'}, {name: 'Forge (+3ATT)', value: 'Forge'}],
             name: 'choice'
         }]
         function callback(response){
@@ -832,7 +847,7 @@ var mimic = {
             if(response.choice == 'Open'){
                 messages.push('You open the chest...')
                 if(Math.floor(Math.random()*2)){
-                    messages.push('A mimic appears!', function(){preBattle(new uniqueEnemies.Mimic())})
+                    messages.push('A mimic appears!', function(){preBattle(new enemies.uniqueEnemies.Mimic())})
                     queueMessage(messages)
                     return
                 }
@@ -853,8 +868,22 @@ var monster = {
 
 
     event: function(){
-        monster = new tier1Enemies.goblin()
+        var keys = Object.keys(enemies[player.tier].common)
+        randomKey = keys[Math.floor(Math.random()*keys.length)]
+        monster = new enemies[player.tier].common[randomKey]()
         queueMessage(['You charge the monster \n',function(){preBattle(monster)}])
+    }
+}
+
+var elite = {
+    premessage: 'A daunting foe guards this path.',
+
+
+    event: function(){
+        var keys = Object.keys(tier1Enemies.elite)
+        randomKey = keys[Math.floor(Math.random()*keys.length)]
+        elite = new enemies[player.tier].elite[randomKey]()
+        queueMessage(['You challenge the foe. \n',function(){preBattle(elite)}])
     }
 }
 
@@ -983,7 +1012,7 @@ var shrine = {
 
 var unique = {
     premessage: 'Thick trees obscure your view on this path',
-    uniquePool: [beggar,shrine,campfire,monster],
+    uniquePool: [beggar,mimic,campfire,monster,shop],
     event: function(){
         var randomEvent = this.uniquePool[Math.floor(Math.random()*this.uniquePool.length)]
         var messages = []
@@ -996,5 +1025,5 @@ var unique = {
     }
 }
 
-var events = [monster,unique]
-mimic.event()
+var events = [monster,monster,unique,unique,elite,campfire]
+preBattle(new enemies.tier1.common.Wizard())
