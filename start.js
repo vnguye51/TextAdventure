@@ -12,11 +12,12 @@ var player = {
     multAtt: 1,
     defense: 0,
     tempDef: 0,
+    maxHp : 36,
     hp : 36,
     pos : 0,
     gold : 100,
     items: ['Health Potion'],
-    relics: [],
+    relics: ['Micro Garden', 'Blood Ruby', 'Crimson Garnet'],
 
 }
 
@@ -104,9 +105,19 @@ function start(){
 
 //ACTIONS/////////
 
+
 function move(){
     player.pos += 1
-    var messages = [player.pos + ' miles traveled.']
+    var messages = []
+    for(var i = 0; i < player.relics.length; i++){
+        if(relicList[player.relics[i]].moveEffect){
+            relicList[player.relics[i]].moveEffect()
+            messages.push(relicList[player.relics[i]].moveMessage)
+            messages.push('')
+        }
+    }
+
+    messages.push(player.pos + ' miles traveled.')
     if(player.pos == 5){
         messages.push('A quarter of the way there')
     }
@@ -202,7 +213,6 @@ function move(){
     queueMessage(messages)
 }
 
-//Battle: preBattle -> TurnChecks ->  
 
 function preBattle(monster){
     ///CHECK FOR RELICS///
@@ -281,8 +291,41 @@ function postBattle(monster){
     }
     messages.push(monster.death)
     messages.push('You loot ' + monster.gold + 'g')
-    messages.push(move)
+    messages.push(chooseRelic)
     queueMessage(messages)
+}
+
+function chooseRelic(){
+    var relicArray = []
+    for(var i = 0; i < 3; i++){
+        var item = Object.keys(relicPool)[Math.floor(Math.random()*Object.keys(relicPool).length)]
+        relicArray.push({name: item, value: item})
+    }  
+    var prompt = [{
+        type: 'list',
+        message: "Choose a relic.",
+        choices: relicArray,
+        name: 'choice'
+    }]
+
+    function callback(response){
+        var messages = []
+        messages.push('You chose ' + response.choice)
+        if(relicPool[response.choice]){
+            player.relics.push(response.choice)
+            delete relicPool[response.choice]
+            }
+        var newRelic = relicList[response.choice]
+        if(newRelic.obtainEffect){
+            newRelic.obtainEffect()
+            messages.push(newRelic.obtainMessage)
+        }
+        messages.push(move)
+        queueMessage(messages)
+        }
+    
+
+    queuePrompt(prompt,callback)
 }
 
 function inventory(){
@@ -373,15 +416,34 @@ potionList = {
 function Relic(cost){
     this.cost = cost
 }
-var relic0 = new Relic(150)
-    relic0.preMessage = 'relic0 empowers you. +5ATT'
-    relic0.preEffect = function(){
+var bloodRuby = new Relic(150)
+    bloodRuby.preMessage = 'Blood Ruby empowers you. +5ATT'
+    bloodRuby.preEffect = function(){
         player.tempAtt += 5
     }
-var relic1 = new Relic(150)
-    relic1.preMessage = 'relic1 steels your skin. +5DEF'
-    relic1.preEffect = function(){
+
+var crimsonGarnet = new Relic(150)
+    crimsonGarnet.preMessage = 'Crimson Garnet empowers you. +4ATT'
+    crimsonGarnet.preEffect = function(){
+        player.tempAtt += 5
+    }
+
+var cobaltSapphire = new Relic(150)
+    cobaltSapphire.preMessage = 'Cobalt Sapphire steels your skin. +5DEF'
+    cobaltSapphire.preEffect = function(){
     player.tempDef += 5
+    }
+
+var lapis = new Relic(150)
+    lapis.preMessage = 'The Lapis Lazuli steels your skin. +4DEF'
+    lapis.preEffect = function(){
+    player.tempDef += 4
+    }
+
+var aquamarine = new Relic(150)
+    aquamarine.preMessage = 'The Lapis Lazuli steels your skin. +6DEF'
+    aquamarine.preEffect = function(){
+    player.tempDef += 6
     }
 
 //Every enemy killed gives +1 ATT
@@ -399,7 +461,6 @@ var blueLantern = new Relic(150)
     }
 
 var redLantern = new Relic(150)   
-
     redLantern.storedAtt = 0
     redLantern.preMessage = 'There are no souls in your Red Lantern.'
     redLantern.preEffect = function(){
@@ -413,11 +474,11 @@ var redLantern = new Relic(150)
 
     
 
-var relic3 = new Relic(150) //Enemies drop 50% more gold
+var scroll = new Relic(150) //Enemies drop 50% more gold
 
-    relic3.postEffect = function(monster){
+    scroll.postEffect = function(monster){
         player.gold += Math.floor(monster.gold*0.5)
-        relic3.postMessage = 'Alchemical Scroll duplicates the gold dropped from the enemy ' + Math.floor(monster.gold*0.5) +'g'
+        scroll.postMessage = 'Alchemical Scroll duplicates the gold dropped from the enemy ' + Math.floor(monster.gold*0.5) +'g'
     }
 
 var turnwheel = new Relic(150)
@@ -435,17 +496,23 @@ var turnwheel = new Relic(150)
     }
 
 var theCoin = new Relic(150)
-    theCoin.countdown = 1
+    theCoin.countdown = 3
     theCoin.conEffect = function(){
         theCoin.countdown -= 1
-        if(theCoin.countdown == 0){
-            theCoin.countdown = 2
-            theCoin.conMessage = 'The Coin flips. +5 ATT'
+        if(theCoin.countdown == 2){
+            theCoin.conMessage = 'The Coin flips. (+5 ATT)'
             player.tempAtt += 5
         }
-        else{
-            theCoin.conMessage = 'The Coin flips. +5 DEF'
+        else if(theCoin.countdown == 1){
+            theCoin.conMessage = 'The Coin flips. (+5 DEF,-5ATT)'
             player.tempDef += 5
+            player.tempAtt -= 5
+        }
+        else{
+            theCoin.countdown = 2
+            theCoin.conMessage = 'The Coin flips. (+5 ATT, -5 DEF)'
+            player.tempAtt += 5
+            player.tempDef -= 5
         }
     }
 
@@ -453,7 +520,7 @@ var effigy = new Relic(150)
     //Need to add a check during the opponents damagestep
     effigy.damageEffect = function(){
         if (player.hp <= 0){
-            effigy.damageMessage = 'The effigy enters Death\'s Door in your stead.'
+            effigy.damageMessage = 'The Human Effigy enters Death\'s Door in your stead.'
             player.hp = 1
             player.relics.splice(player.relics.indexOf('Effigy'),1)
             ///Delete the relic keys on the next step
@@ -468,62 +535,165 @@ var luckyDice = new Relic(150)
             player.multAtt = 0
         }
         else{
-            luckyDice.conMessage = 'You roll a '+ roll + '.' + 'Your attacks deal ' + (roll+1) + 'x damage this turn.'
-            player.multAtt *= (roll+1)
+            luckyDice.conMessage = 'You roll a '+ roll + '.' + 'Your attacks deal ' + (roll+1)*0.5 + 'x damage this turn.'
+            player.multAtt *= (roll+1)*0.5
         }
     }
 
 var midasHeart = new Relic(150)
+    midasHeart.preEffect = function(){
+        var bonusDef = Math.floor(player.gold/50)
+        midasHeart.preMessage = 'Midas\'s heart covers you in gold. (+' + player.gold+'g)'
+        player.tempDef += bonusDef
+    }
 //For every 50 gold you have in your inventory gain +1 def
-
-var topsyTurvy = new Relic(150)
-//Swap your base attack with your base defense
 
 var whetStone = new Relic(150)
 //Double the effectiveness of sharpening at campfires
+//Logic is in the campfire
 
-var steelCross = new Relic(150)
-//Reflect half the damage blocked back to your opponent
+var spikyShield = new Relic(150)
+spikyShield.hurtEffect = function(monster){
+    var reflectedDamage = Math.floor(monster.attack/2)
+    spikyShield.hurtMessage = 'Your spiky shield reflects half the damage. (' + reflectedDamage + ')'
+}
 
 var steelHeart = new Relic(150)
+    steelHeart.bonusDef = 0
+    steelHeart.conEffect = function(){
+        steelHeart.bonusDef += 2
+        player.bonusDef += 2
+        conMessage = 'As the fight continues you steel your resolve. (+' + steelHeart.bonusDef + ')'
+    }
 //Every turn gain +2 Def
 
 var doubleEdgedSword = new Relic(150)
+    doubleEdgedSword.preEffect = function(monster){
+        monster.attack += 10
+        player.multAtt *= 2
+        preMessage = 'You equip your Double Edged Sword. (Enemy: +10 ATT, Self:x2 Damage)'
+    }
 //You deal double damage but your opponent gains +10 ATT
 
 var kale = new Relic(150)
-//Gain +25 HP
+    kale.obtainEffect = function(){
+        player.maxHp += 30
+        player.hp += 30
+    }
+    kale.obtainMessage = 'You eat the Kale (+30 Max HP)' 
+//Gain +30 HP
 
 var broccoli = new Relic(150)
+broccoli.obtainEffect = function(){
+    player.maxHp += 25
+    player.hp += 25
+}
+broccoli.obtainMessage = 'You eat the Broccoli (+25 Max HP)' 
+//Gain +25 HP
+
+var brusselSprouts = new Relic(150)
+brusselSprouts.obtainEffect = function(){
+    player.maxHp += 20
+    player.hp += 20
+}
+brusselSprouts.obtainMessage = 'You eat the Brussel Sprouts (+20 Max HP)' 
 //Gain +20 HP
 
-var bruseelSprouts = new Relic(150)
-//Gain +20 HP
+var spinach = new Relic(150)
+spinach.obtainEffect = function(){
+    player.maxHp += 15
+    player.hp += 15
+}
+spinach.obtainMessage = 'You eat the Spinach (+15 Max HP)' 
+
+var microGarden = new Relic(150)
+microGarden.moveEffect = function(){
+    player.maxHp += 2
+    player.hp += 2
+}
+microGarden.moveMessage = 'Your microgreens are ready. You eat some sprouts (+2 MaxHP)'
+
 
 var cookingPan = new Relic(150)
+cookingPan.postEffect = function(){
+    cookingPan.postMessage = 'Ssssssssssss..... You eat some fresh meat. (+8 HP, HP: ' +player.hp + '/' + player.maxHp
+    player.hp = Math.max(player.maxHp,player.hp+8)
+}
 //Restore +8 HP after every fight
+//Starting relic
 
 var ritualDagger = new Relic(150)
-//Lose 3HP every attack but gain +10ATT  
+    ritualDagger.preEffect = function(){
+        ritualDagger.preMessage = 'You slice the palm of your hand. Eldritch magic powers you (+5ATT, -2HP)'
+        player.tempAtt += 5
+        player.hp -= 2
+    }
+
+var piggyBank = new Relic(150)
+    piggyBank.moveEffect = function(){
+        var bonusGold = Math.floor(player.gold*0.05)
+        player.gold += bonusGold
+        piggyBank.moveMessage = 'The Piggy Bank compounds your interest. (+' + bonusGold + 'g)'
+    }
+
+var reagent = new Relic(150)
+    //logic is inside the potion step
 
 var relicList ={
-    'Relic0' : relic0,
-    'Relic1' : relic1,
+    'Blood Ruby' : bloodRuby,
+    'Cobalt Sapphire' : cobaltSapphire,
     'Red Lantern' : redLantern,
     'Blue Lantern' : blueLantern,
-    'Relic3' : relic3,
+    'Alchemical Scroll' : scroll,
     'Turnwheel' : turnwheel,
     'The Coin' : theCoin,
+    'Human Effigy' : effigy,
+    'Lucky Dice' : luckyDice,
+    'Midas\'s Heart' : midasHeart,
+    'Steel Heart' : steelHeart,
+    'Double Edged Sword' : doubleEdgedSword,
+    'Kale' : kale,
+    'Broccoli' : broccoli,
+    'Brussel Sprouts': brusselSprouts,
+    'Cooking Pan': cookingPan,
+    'Ritual Dagger': ritualDagger,
+    'Spinach' : spinach,
+    'Micro Garden' : microGarden,
+    'Whetstone' : whetStone,
+    'Spiky Shield' : spikyShield,
+    'Piggy Bank' : piggyBank,
+    'Crimson Garnet': crimsonGarnet,
+    'Lapis Lazuli': lapis,
+    'Foul Reagent': reagent,
+    'Aquamarine' : aquamarine,
+
 }
 
 var relicPool={
-    'Relic0' : relic0,
-    'Relic1' : relic1,
+    'Blood Ruby' : bloodRuby,
+    'Cobalt Sapphire' : cobaltSapphire,
     'Red Lantern' : redLantern,
     'Blue Lantern' : blueLantern,
-    'Relic3' : relic3,
+    'Alchemical Scroll' : scroll,
     'Turnwheel' : turnwheel,
     'The Coin' : theCoin,
+    'Human Effigy' : effigy,
+    'Lucky Dice' : luckyDice,
+    'Midas\'s Heart' : midasHeart,
+    'Steel Heart' : steelHeart,
+    'Double Edged Sword' : doubleEdgedSword,
+    'Kale' : kale,
+    'Broccoli' : broccoli,
+    'Brussel Sprouts': brusselSprouts,
+    'Cooking Pan': cookingPan,
+    'Ritual Dagger': ritualDagger,
+    'Spinach' : spinach,
+    'Micro Garden' : microGarden,
+    'Piggy Bank' : piggyBank,
+    'Crimson Garnet': crimsonGarnet,
+    'Lapis Lazuli': lapis,
+    'Foul Reagent': reagent,
+    'Aquamarine' : aquamarine,
 }
 ////////////Enemy List////////////////
 tier1Enemies = {
