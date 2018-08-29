@@ -1,6 +1,8 @@
 //Initialize items
 var inquirer = require("inquirer");
 var seed = require('seed-random')
+var relicList = require('./relics.js').relicList
+var relicPool = require('./relics.js').relicPool
 
 
 //Initialize player stats
@@ -111,7 +113,7 @@ function move(){
     var messages = []
     for(var i = 0; i < player.relics.length; i++){
         if(relicList[player.relics[i]].moveEffect){
-            relicList[player.relics[i]].moveEffect()
+            relicList[player.relics[i]].moveEffect(player)
             messages.push(relicList[player.relics[i]].moveMessage)
             messages.push('')
         }
@@ -219,7 +221,7 @@ function preBattle(monster){
     var messages = []
     for(var i = 0; i < player.relics.length; i++){
         if(relicList[player.relics[i]].preEffect){
-            relicList[player.relics[i]].preEffect(monster)
+            relicList[player.relics[i]].preEffect(player,monster)
             messages.push(relicList[player.relics[i]].preMessage)
             messages.push('')
         }
@@ -232,7 +234,7 @@ function preTurn(monster){
     var messages = []
     for(var i = 0; i < player.relics.length; i++){
         if(relicList[player.relics[i]].conEffect){
-            relicList[player.relics[i]].conEffect(monster)
+            relicList[player.relics[i]].conEffect(player,monster)
             messages.push(relicList[player.relics[i]].conMessage)
             messages.push('')
         }
@@ -240,9 +242,10 @@ function preTurn(monster){
     player.totalAtt = (player.attack + player.tempAtt) * player.multAtt
     messages.push('Your attack will deal ' + player.totalAtt + ' damage.')
     messages.push(monster.warning)
-    messages.push('You have ' + player.defense + ' DEF')
+    messages.push('Player ATT: ' + player.attack + ' ATT')
+    messages.push('Player DEF: ' + player.defense + ' DEF')
     messages.push('Player HP: ' + player.hp)
-    messages.push(monster.name + ': ' + monster.hp)
+    messages.push(monster.name + 'HP: ' + monster.hp)
     messages.push(function(){battleTurn(monster)})
     queueMessage(messages)
 }
@@ -413,294 +416,14 @@ potionList = {
 ////Relic List/////////
 ///Relic logic is separated into three parts they can be called either in the pre,continiuing, or post battle phases.
 // During each phase the player's relics are looped through and checked if they have any pre,continuing, or post effects.
-function Relic(cost){
-    this.cost = cost
-}
-var bloodRuby = new Relic(150)
-    bloodRuby.preMessage = 'Blood Ruby empowers you. +5ATT'
-    bloodRuby.preEffect = function(){
-        player.tempAtt += 5
-    }
 
-var crimsonGarnet = new Relic(150)
-    crimsonGarnet.preMessage = 'Crimson Garnet empowers you. +4ATT'
-    crimsonGarnet.preEffect = function(){
-        player.tempAtt += 5
-    }
-
-var cobaltSapphire = new Relic(150)
-    cobaltSapphire.preMessage = 'Cobalt Sapphire steels your skin. +5DEF'
-    cobaltSapphire.preEffect = function(){
-    player.tempDef += 5
-    }
-
-var lapis = new Relic(150)
-    lapis.preMessage = 'The Lapis Lazuli steels your skin. +4DEF'
-    lapis.preEffect = function(){
-    player.tempDef += 4
-    }
-
-var aquamarine = new Relic(150)
-    aquamarine.preMessage = 'The Lapis Lazuli steels your skin. +6DEF'
-    aquamarine.preEffect = function(){
-    player.tempDef += 6
-    }
-
-//Every enemy killed gives +1 ATT
-var blueLantern = new Relic(150)   
-
-    blueLantern.storedDef = 0
-    blueLantern.preMessage = 'There are no souls in your Blue Lantern.'
-    blueLantern.preEffect = function(){
-        player.tempDef += blueLantern.storedDef
-    }
-    blueLantern.postMessage = 'The monster\'s soul is sucked into your Blue Lantern'
-    blueLantern.postEffect = function(){
-        blueLantern.storedDef += 1
-        blueLantern.preMessage = 'There are ' + blueLantern.storedDef + ' souls in your Blue Lantern.' 
-    }
-
-var redLantern = new Relic(150)   
-    redLantern.storedAtt = 0
-    redLantern.preMessage = 'There are no souls in your Red Lantern.'
-    redLantern.preEffect = function(){
-        player.tempAtt += redLantern.storedAtt
-    }
-    redLantern.postMessage = 'The monster\'s soul is sucked into your Red Lantern'
-    redLantern.postEffect = function(){
-        redLantern.storedAtt += 1
-        redLantern.preMessage = 'There are ' + redLantern.storedAtt + ' souls in your Red Lantern.' 
-    }
-
-    
-
-var scroll = new Relic(150) //Enemies drop 50% more gold
-
-    scroll.postEffect = function(monster){
-        player.gold += Math.floor(monster.gold*0.5)
-        scroll.postMessage = 'Alchemical Scroll duplicates the gold dropped from the enemy ' + Math.floor(monster.gold*0.5) +'g'
-    }
-
-var turnwheel = new Relic(150)
-    turnwheel.countdown = 6
-    turnwheel.conEffect = function(){
-        turnwheel.countdown -= 1
-        if(turnwheel.countdown == 0){
-            turnwheel.countdown = 6
-            turnwheel.conMessage = 'The Turnwheel completes a cycle. Your blade blazes. Your attacks deal 5x damage this turn.'
-            player.multAtt *= 5//Total Att is recalculated every turn so no need to clean up
-        }
-        else{
-            turnwheel.conMessage = 'The Turnwheel rotates. '+ turnwheel.countdown + ' turns left.'
-        }
-    }
-
-var theCoin = new Relic(150)
-    theCoin.countdown = 3
-    theCoin.conEffect = function(){
-        theCoin.countdown -= 1
-        if(theCoin.countdown == 2){
-            theCoin.conMessage = 'The Coin flips. (+5 ATT)'
-            player.tempAtt += 5
-        }
-        else if(theCoin.countdown == 1){
-            theCoin.conMessage = 'The Coin flips. (+5 DEF,-5ATT)'
-            player.tempDef += 5
-            player.tempAtt -= 5
-        }
-        else{
-            theCoin.countdown = 2
-            theCoin.conMessage = 'The Coin flips. (+5 ATT, -5 DEF)'
-            player.tempAtt += 5
-            player.tempDef -= 5
-        }
-    }
-
-var effigy = new Relic(150)
-    //Need to add a check during the opponents damagestep
-    effigy.damageEffect = function(){
-        if (player.hp <= 0){
-            effigy.damageMessage = 'The Human Effigy enters Death\'s Door in your stead.'
-            player.hp = 1
-            player.relics.splice(player.relics.indexOf('Effigy'),1)
-            ///Delete the relic keys on the next step
-            }
-        }
-
-var luckyDice = new Relic(150)
-    luckyDice.conEffect = function(){
-        var roll = Math.floor(Math.random()*6)
-        if(roll == 0){
-            luckyDice.conMessage = 'Unlucky. You roll a 0. You deal 0 damage this turn'
-            player.multAtt = 0
-        }
-        else{
-            luckyDice.conMessage = 'You roll a '+ roll + '.' + 'Your attacks deal ' + (roll+1)*0.5 + 'x damage this turn.'
-            player.multAtt *= (roll+1)*0.5
-        }
-    }
-
-var midasHeart = new Relic(150)
-    midasHeart.preEffect = function(){
-        var bonusDef = Math.floor(player.gold/50)
-        midasHeart.preMessage = 'Midas\'s heart covers you in gold. (+' + player.gold+'g)'
-        player.tempDef += bonusDef
-    }
-//For every 50 gold you have in your inventory gain +1 def
-
-var whetStone = new Relic(150)
-//Double the effectiveness of sharpening at campfires
-//Logic is in the campfire
-
-var spikyShield = new Relic(150)
-spikyShield.hurtEffect = function(monster){
-    var reflectedDamage = Math.floor(monster.attack/2)
-    spikyShield.hurtMessage = 'Your spiky shield reflects half the damage. (' + reflectedDamage + ')'
-}
-
-var steelHeart = new Relic(150)
-    steelHeart.bonusDef = 0
-    steelHeart.conEffect = function(){
-        steelHeart.bonusDef += 2
-        player.bonusDef += 2
-        conMessage = 'As the fight continues you steel your resolve. (+' + steelHeart.bonusDef + ')'
-    }
-//Every turn gain +2 Def
-
-var doubleEdgedSword = new Relic(150)
-    doubleEdgedSword.preEffect = function(monster){
-        monster.attack += 10
-        player.multAtt *= 2
-        preMessage = 'You equip your Double Edged Sword. (Enemy: +10 ATT, Self:x2 Damage)'
-    }
-//You deal double damage but your opponent gains +10 ATT
-
-var kale = new Relic(150)
-    kale.obtainEffect = function(){
-        player.maxHp += 30
-        player.hp += 30
-    }
-    kale.obtainMessage = 'You eat the Kale (+30 Max HP)' 
-//Gain +30 HP
-
-var broccoli = new Relic(150)
-broccoli.obtainEffect = function(){
-    player.maxHp += 25
-    player.hp += 25
-}
-broccoli.obtainMessage = 'You eat the Broccoli (+25 Max HP)' 
-//Gain +25 HP
-
-var brusselSprouts = new Relic(150)
-brusselSprouts.obtainEffect = function(){
-    player.maxHp += 20
-    player.hp += 20
-}
-brusselSprouts.obtainMessage = 'You eat the Brussel Sprouts (+20 Max HP)' 
-//Gain +20 HP
-
-var spinach = new Relic(150)
-spinach.obtainEffect = function(){
-    player.maxHp += 15
-    player.hp += 15
-}
-spinach.obtainMessage = 'You eat the Spinach (+15 Max HP)' 
-
-var microGarden = new Relic(150)
-microGarden.moveEffect = function(){
-    player.maxHp += 2
-    player.hp += 2
-}
-microGarden.moveMessage = 'Your microgreens are ready. You eat some sprouts (+2 MaxHP)'
-
-
-var cookingPan = new Relic(150)
-cookingPan.postEffect = function(){
-    cookingPan.postMessage = 'Ssssssssssss..... You eat some fresh meat. (+8 HP, HP: ' +player.hp + '/' + player.maxHp
-    player.hp = Math.max(player.maxHp,player.hp+8)
-}
-//Restore +8 HP after every fight
-//Starting relic
-
-var ritualDagger = new Relic(150)
-    ritualDagger.preEffect = function(){
-        ritualDagger.preMessage = 'You slice the palm of your hand. Eldritch magic powers you (+5ATT, -2HP)'
-        player.tempAtt += 5
-        player.hp -= 2
-    }
-
-var piggyBank = new Relic(150)
-    piggyBank.moveEffect = function(){
-        var bonusGold = Math.floor(player.gold*0.05)
-        player.gold += bonusGold
-        piggyBank.moveMessage = 'The Piggy Bank compounds your interest. (+' + bonusGold + 'g)'
-    }
-
-var reagent = new Relic(150)
-    //logic is inside the potion step
-
-var relicList ={
-    'Blood Ruby' : bloodRuby,
-    'Cobalt Sapphire' : cobaltSapphire,
-    'Red Lantern' : redLantern,
-    'Blue Lantern' : blueLantern,
-    'Alchemical Scroll' : scroll,
-    'Turnwheel' : turnwheel,
-    'The Coin' : theCoin,
-    'Human Effigy' : effigy,
-    'Lucky Dice' : luckyDice,
-    'Midas\'s Heart' : midasHeart,
-    'Steel Heart' : steelHeart,
-    'Double Edged Sword' : doubleEdgedSword,
-    'Kale' : kale,
-    'Broccoli' : broccoli,
-    'Brussel Sprouts': brusselSprouts,
-    'Cooking Pan': cookingPan,
-    'Ritual Dagger': ritualDagger,
-    'Spinach' : spinach,
-    'Micro Garden' : microGarden,
-    'Whetstone' : whetStone,
-    'Spiky Shield' : spikyShield,
-    'Piggy Bank' : piggyBank,
-    'Crimson Garnet': crimsonGarnet,
-    'Lapis Lazuli': lapis,
-    'Foul Reagent': reagent,
-    'Aquamarine' : aquamarine,
-
-}
-
-var relicPool={
-    'Blood Ruby' : bloodRuby,
-    'Cobalt Sapphire' : cobaltSapphire,
-    'Red Lantern' : redLantern,
-    'Blue Lantern' : blueLantern,
-    'Alchemical Scroll' : scroll,
-    'Turnwheel' : turnwheel,
-    'The Coin' : theCoin,
-    'Human Effigy' : effigy,
-    'Lucky Dice' : luckyDice,
-    'Midas\'s Heart' : midasHeart,
-    'Steel Heart' : steelHeart,
-    'Double Edged Sword' : doubleEdgedSword,
-    'Kale' : kale,
-    'Broccoli' : broccoli,
-    'Brussel Sprouts': brusselSprouts,
-    'Cooking Pan': cookingPan,
-    'Ritual Dagger': ritualDagger,
-    'Spinach' : spinach,
-    'Micro Garden' : microGarden,
-    'Piggy Bank' : piggyBank,
-    'Crimson Garnet': crimsonGarnet,
-    'Lapis Lazuli': lapis,
-    'Foul Reagent': reagent,
-    'Aquamarine' : aquamarine,
-}
 ////////////Enemy List////////////////
-tier1Enemies = {
+var tier1Enemies = {
     goblin: function(){
         this.hp = 30
-        this.name = 'goblin'
-        this.attack= 5
+        this.name = 'Goblin'
+        this.attack = 5
+        this.damage = 5
         this.warning = this.name + ' is about to attack for 5 damage.'
         this.death = this.name + ' let\'s out a pained howl before falling silent.'
         this.gold = 50
@@ -714,18 +437,356 @@ tier1Enemies = {
         this.ai = function(){
             this.attack1()
         }
+    },
+
+    orc: function(){
+        this.hp = 30
+        this.name = 'Orc'
+        this.attack = 8
+        this.damage = 8
+        this.warning = this.name + ' is about to attack for 5 damage.'
+        this.death = this.name + ' let\'s out a pained howl before falling silent.'
+        this.gold = 50
+        this.attack1= function(){
+            _this = this
+            var damage = this.attack - player.defense
+            player.hp -= damage
+            queueMessage(['Orc attacks for ' + damage + ' damage',function(){preTurn(_this)}])
+            
+        }
+        this.ai = function(){
+            this.attack1()
+        }
+    },
+
+    wizard: function(){
+        this.hp = 30
+        this.name = 'Wizard'
+        this.attack = 5
+        this.damage = 5
+        this.warning = this.name + ' is about to attack for 5 damage.'
+        this.death = 'You barbarian...'
+        this.gold = 50
+        this.attack1 = function(){
+            _this = this 
+            var calcDamage = this.damage - player.defense
+            player.hp -= calcDamage
+            this.warning = 'Wizard is chanting...'
+            queueMessage(['Wizard attacks for ' + calcDamage + ' damage',function(){preTurn(_this)}])
+        }
+        this.attack2 = function(){
+            _this = this
+            queueMessage(['The Wizard is starting to glow',function(){preTurn(_this)} ])            
+        }
+        this.attack3 = function(){
+            _this = this
+            queueMessage(['The Wizard is blazing!', function(){preTurn(_this)}])
+            this.warning = 'The Wizard is about to attack for 30 damage'
+            this.damage = 30
+        }
+        this.attack4 = function(){
+            _this = this
+            var calcDamage = this.damage - player.defense
+            player.hp -= calcDamage
+            this.warning = this.name + ' is about to attack for 5 damage.'
+            this.damage = 5
+            queueMessage(['Flames! I beseech thee!','Return us to cinders!', function(){preTurn(_this)}])
+        }
+    },
+
+    treant: function(){
+        this.hp = 30
+        this.name = 'Treant'
+        this.attack = 5
+        this.damage = 5
+        this.warning = this.name + ' is about to attack for 5 damage.'
+        this.death = this.name + ' let\'s out a pained howl before falling silent.'
+        this.gold = 50
+        this.attack1= function(){
+            _this = this
+            var damage = this.attack - player.defense
+            player.hp -= damage
+            queueMessage(['Treant attacks for ' + damage + ' damage',function(){preTurn(_this)}])
+            
+        }
+        this.ai = function(){
+            this.attack1()
+        }
+    },
+}//Forest theme
+
+var tier2Enemies = {
+    //Tribal theme
+    direWolf: function(){
+        this.hp = 30
+        this.name = 'Dire Wolf'
+        this.attack = 5
+        this.damage = 5
+        this.warning = this.name + ' is about to attack for 5 damage.'
+        this.death = this.name + ' let\'s out a pained howl before falling silent.'
+        this.gold = 50
+        this.attack1= function(){
+            _this = this
+            var damage = this.attack - player.defense
+            player.hp -= damage
+            queueMessage(['Dire Wolf attacks for ' + damage + ' damage',function(){preTurn(_this)}])
+            
+        }
+        this.ai = function(){
+            this.attack1()
+        }
+    },
+
+    shaman: function(){
+        this.hp = 30
+        this.name = 'Shaman'
+        this.attack = 5
+        this.damage = 5
+        this.warning = this.name + ' is about to attack for 5 damage.'
+        this.death = this.name + ' let\'s out a pained howl before falling silent.'
+        this.gold = 50
+        this.attack1= function(){
+            _this = this
+            var damage = this.attack - player.defense
+            player.hp -= damage
+            queueMessage(['Shaman attacks for ' + damage + ' damage',function(){preTurn(_this)}])
+            
+        }
+        this.ai = function(){
+            this.attack1()
+        }
+    },
+
+    mandragora: function(){
+        this.hp = 30
+        this.name = 'Mandragora'
+        this.attack = 5
+        this.damage = 5
+        this.warning = this.name + ' is about to attack for 5 damage.'
+        this.death = this.name + ' let\'s out a pained howl before falling silent.'
+        this.gold = 50
+        this.attack1= function(){
+            _this = this
+            var damage = this.attack - player.defense
+            player.hp -= damage
+            queueMessage(['Mandragora attacks for ' + damage + ' damage',function(){preTurn(_this)}])
+            
+        }
+        this.ai = function(){
+            this.attack1()
+        }
+    },
+
+    shamanKing: function(){
+        this.hp = 30
+        this.name = 'Shaman King'
+        this.attack = 5
+        this.damage = 5
+        this.warning = this.name + ' is about to attack for 5 damage.'
+        this.death = this.name + ' let\'s out a pained howl before falling silent.'
+        this.gold = 50
+        this.attack1= function(){
+            _this = this
+            var damage = this.attack - player.defense
+            player.hp -= damage
+            queueMessage(['Shaman King attacks for ' + damage + ' damage',function(){preTurn(_this)}])
+            
+        }
+        this.ai = function(){
+            this.attack1()
+        }
+    },
+
+    
+}
+
+var tier3Enemies = {
+    //Castle theme
+    royalGuard: function(){
+        this.hp = 30
+        this.name = 'Royal Guard'
+        this.attack = 5
+        this.damage = 5
+        this.warning = this.name + ' is about to attack for 5 damage.'
+        this.death = this.name + ' let\'s out a pained howl before falling silent.'
+        this.gold = 50
+        this.attack1= function(){
+            _this = this
+            var damage = this.attack - player.defense
+            player.hp -= damage
+            queueMessage(['Royal Guard attacks for ' + damage + ' damage',function(){preTurn(_this)}])
+            
+        }
+        this.ai = function(){
+            this.attack1()
+        }
+    },
+
+    archWizard: function(){
+        this.hp = 30
+        this.name = 'Arch Wizard'
+        this.attack = 5
+        this.damage = 5
+        this.warning = this.name + ' is about to attack for 5 damage.'
+        this.death = this.name + ' let\'s out a pained howl before falling silent.'
+        this.gold = 50
+        this.attack1= function(){
+            _this = this
+            var damage = this.attack - player.defense
+            player.hp -= damage
+            queueMessage(['Arch Wizard attacks for ' + damage + ' damage',function(){preTurn(_this)}])
+            
+        }
+        this.ai = function(){
+            this.attack1()
+        }
+    },
+
+    abyss: function(){
+        this.hp = 30
+        this.name = 'Goblin'
+        this.attack = 5
+        this.damage = 5
+        this.warning = this.name + ' is about to attack for 5 damage.'
+        this.death = this.name + ' let\'s out a pained howl before falling silent.'
+        this.gold = 50
+        this.attack1= function(){
+            _this = this
+            var damage = this.attack - player.defense
+            player.hp -= damage
+            queueMessage(['Goblin attacks for ' + damage + ' damage',function(){preTurn(_this)}])
+            
+        }
+        this.ai = function(){
+            this.attack1()
+        }
+    },
+
+
+}
+
+var uniqueEnemies = {
+    Mimic: function(){
+        this.hp = 30
+        this.name = 'Mimic'
+        this.attack = 5
+        this.damage = 5
+        this.warning = this.name + ' is about to attack for 5 damage.'
+        this.death = this.name + ' let\'s out a pained howl before falling silent.'
+        this.gold = 50
+        this.attack1= function(){
+            _this = this
+            var damage = this.attack - player.defense
+            player.hp -= damage
+            queueMessage(['Mimic attacks for ' + damage + ' damage',function(){preTurn(_this)}])
+            
+        }
+        this.ai = function(){
+            this.attack1()
+        }
+    },
+}
+
+var bosses = {
+    blackkKnight: function(){
+        this.hp = 100
+        this.name = 'The Dark Knight'
+        this.attack = 20
+        this.damage = 20
+        this.warning = this.name + ' is about to attack for ' + this.damage + ' damage.'
+        this.death = this.name + ' "This isn\'t over..." \n The Black Knight escapes into the mists...' 
+        this.gold = 100
+        this.turn = 0
+        this.attack1 = function(){
+            _this = this 
+            var calcDamage = this.damage - player.defense
+            player.hp -= this.damage 
+            this.warning = this.name + 'is gathering strength.'
+            queueMessage(['The Dark Knight swings his sword.', calcDamage +' damage!', function(){preTurn(_this)}])
+        }
+        this.attack2 = function(){
+            _this = this
+            this.attack += 10
+            this.damage = this.attack
+            this.warning = this.name + ' is about to attack for ' + this.damage + ' damage.'
+            queueMessage(['WRAH!', 'Now face me!', 'The Dark Knight gains +10ATT', function(){preTurn(_this)}])
+        }
+        this.pattern = [attack1,attack2]
+        this.ai = function(){
+            this.pattern[0]()
+            this.pattern.push(this.pattern.shift)
+        }
+    },
+
+    hydra: function(){
+        this.hp = 30
+        this.name = 'Royal Guard'
+        this.attack = 5
+        this.damage = 5
+        this.warning = this.name + ' is about to attack for 5 damage.'
+        this.death = this.name + ' let\'s out a pained howl before falling silent.'
+        this.gold = 50
+        this.attack1= function(){
+            _this = this
+            var damage = this.attack - player.defense
+            player.hp -= damage
+            queueMessage(['Royal Guard attacks for ' + damage + ' damage',function(){preTurn(_this)}])
+            
+        }
+        this.ai = function(){
+            this.attack1()
+        }
+    },
+
+    magicConstruct: function(){
+        this.hp = 30
+        this.name = 'Royal Guard'
+        this.attack = 5
+        this.damage = 5
+        this.warning = this.name + ' is about to attack for 5 damage.'
+        this.death = this.name + ' let\'s out a pained howl before falling silent.'
+        this.gold = 50
+        this.attack1= function(){
+            _this = this
+            var damage = this.attack - player.defense
+            player.hp -= damage
+            queueMessage(['Royal Guard attacks for ' + damage + ' damage',function(){preTurn(_this)}])
+            
+        }
+        this.ai = function(){
+            this.attack1()
+        }
+    },
+
+    ruler: function(){
+        this.hp = 400
+        this.name = 'The Ruler'
+        this.attack = 50
+        this.damage = 50
+    },
+
+    goddess: function(){
+        this.hp = 400
+        this.name = 'The Goddess'
+        this.attack = 50
+        this.damage = 50
+    },
+
+    lord: function(){
+        //The TurnWheel and The Diary are required to fight this boss
+        this.hp = 600
+        this.name = 'The Lord of All'
+        this.attack = 50
+        this.damage = 50
+
+        //attack1 resets buffs
+        //attack2 charge attack
+        //attack3 when below half health; switches between attacking and being invulnerable
+        //During invulnerable turns gains att
     }
 }
 
-// boss1 = {
-//     hp: 100,
-//     attack: 10,
-//     pattern = [attack1,attack2,attack3],
-//     attack1 = function(){
-//         player.hp -= attack
-//     },
-//     attack
-// }
+
 
 
 //////////////EVENTS///////////////
@@ -756,7 +817,36 @@ var campfire = {
     }
 }
 
-
+var mimic = {
+    event: function(){
+        var messages = []
+        messages.push('You come across a chest...','Odd that there are no guards and no locks on the chest.')
+        var prompt = [{
+            type: 'list',
+            message: 'Do you open the chest?',
+            choices: ['Open', 'Leave'],
+            name: 'choice'
+        }]
+        var callback = function(response){
+            var messages = []
+            if(response.choice == 'Open'){
+                messages.push('You open the chest...')
+                if(Math.floor(Math.random()*2)){
+                    messages.push('A mimic appears!', function(){preBattle(new uniqueEnemies.Mimic())})
+                    queueMessage(messages)
+                    return
+                }
+                messages.push('You obtain a relic!',function(){chooseRelic()})
+                queueMessage(messages)
+                return
+            }
+            messages.push('Greed has killed many men. You leave the chest alone.',move)
+            queueMessage(messages)
+        }
+        messages.push(function(){queuePrompt(prompt,callback)})
+        queueMessage(messages)
+    }
+}
 
 var monster = {
     premessage: 'You see a monster in the distance',
@@ -868,6 +958,8 @@ var beggar = {
     }
 }
 
+
+
 var shrine = {
     prompt:  [{
         type: 'list',
@@ -880,9 +972,7 @@ var shrine = {
             if (response.choice == 'Pray'){
                 queueMessage(["You send a prayer up to the goddess and take a drink from the shrine.","You feel rejuvenated and are filled with determination\n",move])
             }
-            else if (response.choice == 'Steal'){
-                queueMessage(['filler',move])
-            }
+
             else if (response.choice == 'Desecrate'){
                 queueMessage(['filler',move])
             }
@@ -907,4 +997,4 @@ var unique = {
 }
 
 var events = [monster,unique]
-monster.event()
+mimic.event()
