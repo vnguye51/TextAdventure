@@ -20,7 +20,7 @@ var player = {
     hp : 36,
     pos : 0,
     tier : 'tier1',
-    gold : 100,
+    gold : 10000,
     items: ['Health Potion'],
     relics: [],
 
@@ -115,10 +115,10 @@ function move(){
     if(player.pos == 19){
         messages.push('A great fortress looms before you.')
     }
-    if (player.pos == 24){
+    if (player.pos == 29){
         messages.push("This is it.")
     }
-    if (player.pos == 25){
+    if (player.pos == 30){
         queueMessage('You win!')
         return
     }
@@ -278,7 +278,7 @@ function postBattle(monster){
     messages.push(monster.death)
     messages.push('You loot ' + monster.gold + 'g')
     if(monster.relic){  
-        messages.push(chooseRelic)
+        messages.push(function(){chooseRelic(1)})
     }
     else{
         messages.push(move)
@@ -286,9 +286,9 @@ function postBattle(monster){
     queueMessage(messages)
 }
 
-function chooseRelic(){
+function chooseRelic(n){
     var relicArray = []
-    for(var i = 0; i < 3; i++){
+    for(var i = 0; i < n; i++){
         var item = Object.keys(relicPool)[Math.floor(Math.random()*Object.keys(relicPool).length)]
         relicArray.push({name: item, value: item})
     }  
@@ -393,7 +393,7 @@ var firePot = new Potion(50,function(){
 
 
 
-potionList = {
+var potionList = {
     'Health Potion' : hpPot,
     'Strength Potion' : strPot,
     'Defense Potion' : defPot,
@@ -452,7 +452,7 @@ var tier1Enemies = {
             this.attack = 5
             this.damage = 5
             this.warning = this.name + ' is about to attack for 5 damage.'
-            this.death = 'You barbarian...'
+            this.death = '"You barbarian..."'
             this.gold = 50,
             this.relic = false
             this.attack1 = function(player){
@@ -478,14 +478,12 @@ var tier1Enemies = {
                 player.hp -= calcDamage
                 this.warning = this.name + ' is about to attack for 5 damage.'
                 this.damage = 5
-                queueMessage(['Flames! I beseech thee!','Return us to cinders!', function(player){preTurn(_this)}])
+                queueMessage(['"Flames! I beseech thee!"','"Return us to cinders!"', function(player){preTurn(_this)}])
             }
-            this.pattern = [this.attack1,this.attack2,this.attack3,this.attack4]
+            this.pattern = [1,2,3,4]
             this.ai = function(player){
-                var attack = this.pattern[0]
-                console.log(attack)
-                attack(player)
-                this.pattern.push(this.pattern.shift)
+                this['attack'+this.pattern[0]](player)
+                this.pattern.push(this.pattern.shift())
             }
         },
     },
@@ -851,7 +849,7 @@ var mimic = {
                     queueMessage(messages)
                     return
                 }
-                messages.push('You obtain a relic!',function(){chooseRelic()})
+                messages.push('You obtain a relic!',function(){chooseRelic(1)})
                 queueMessage(messages)
                 return
             }
@@ -989,6 +987,92 @@ var beggar = {
 
 
 
+
+
+var unique = {
+    premessage: 'Thick trees obscure your view on this path',
+    uniquePool: [beggar,mimic,campfire,monster,shop],
+    event: function(){
+        var randomEvent = this.uniquePool[Math.floor(Math.random()*this.uniquePool.length)]
+        var messages = []
+        messages.push('You enter the thicket\n')
+        if (randomEvent.premessage){
+            messages.push(randomEvent.premessage)
+        }
+        messages.push( function(){randomEvent.event()})
+        queueMessage(messages)
+    }
+}
+
+//Tier 1 Events
+var fruit = {
+   
+    event: function(){
+        var messages = []
+        var choiceArray = [{name:'Eat the red fruit (+3 ATT)',value:{id:'red'}},{name: 'Eat the blue fruit (+3 DEF)',value:{id:'blue'}},{name: 'Eat the yellow fruit (+6 HP)',value:{id:'yellow'}}]
+        for(var i = 0; i < choiceArray.length; i++){
+            choiceArray[i].value.index = i
+        }
+        messages.push('You come across an orchard', 'A sign says...', '"Feel free to take one."')
+        choosePrompt =  [{
+            type: 'list',
+            message: 'Choose a fruit!',
+            choices: choiceArray,
+            name: 'choice'
+        }]
+        
+        function chooseCallback(response){
+            var messages = []
+            choiceArray.splice(response.choice.index,1)
+            if(response.choice.id == 'red'){
+                player.attack += 3
+                messages.push('Sweet and delicious... (+3 ATT)')
+            }
+            else if(response.choice.id == 'yellow'){
+                player.defense += 3
+                messages.push('Tart. (+3 DEF)')
+            }
+            else{
+                player.maxHp += 6
+                messages.push('Ugh. Smelly. (+6 max HP)')
+            }
+            for(var i = 0; i < choiceArray.length; i++){
+                choiceArray[i].value.index = i
+            }
+            var continuePrompt =  [{
+                type: 'list',
+                message: 'Take another?',
+                choices: ['Yes','Leave'],
+                name: 'choice'
+            }]
+
+            continueCallback = function(response){
+                var messages = []
+                if(response.choice == 'Yes'){
+                    messages.push(function(){queuePrompt(choosePrompt,chooseCallback)})
+                }
+                else{
+                    messages.push(move)
+                }
+                queueMessage(messages)
+            }
+            if(choiceArray.length > 0){
+                messages.push(function(){queuePrompt(continuePrompt,continueCallback)})
+            }
+            else{
+                var monster = new enemies.tier1.elite.Treant()
+                monster.gold = 0
+                monster.relic = false
+                messages.push('The tree turns to life and attacks!')
+                messages.push(function(){preBattle(monster)})
+            }
+            queueMessage(messages)
+        }
+        messages.push(function(){queuePrompt(choosePrompt,chooseCallback)})
+        queueMessage(messages)
+    }
+}
+
 var shrine = {
     prompt:  [{
         type: 'list',
@@ -1010,20 +1094,6 @@ var shrine = {
     }
 }
 
-var unique = {
-    premessage: 'Thick trees obscure your view on this path',
-    uniquePool: [beggar,mimic,campfire,monster,shop],
-    event: function(){
-        var randomEvent = this.uniquePool[Math.floor(Math.random()*this.uniquePool.length)]
-        var messages = []
-        messages.push('You enter the thicket\n')
-        if (randomEvent.premessage){
-            messages.push(randomEvent.premessage)
-        }
-        messages.push( function(){randomEvent.event()})
-        queueMessage(messages)
-    }
-}
 
 var events = [monster,monster,unique,unique,elite,campfire]
-preBattle(new enemies.tier1.common.Wizard())
+fruit.event()
