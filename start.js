@@ -1073,6 +1073,49 @@ var fruit = {
     }
 }
 
+var traveler1 = {
+    event: function(){
+        var messages = []
+        messages.push('While walking on the road you come across a traveler.', "Hail Knight! Where are you headed?", 'I suggest you turn back. Nothing beyond these woods but monsters and death.',
+            'But here, I have no need for this', function(){chooseRelic(1)})
+        queueMessage(messages)
+    }
+}
+
+var corpse ={
+    event: function(){
+        var messages = []
+        messages.push('While traveling you come across the corpse of another person.', 'On his skin you find the brand of the goddess.', 'You feel as though you should lay the body to rest.',
+            'On the other hand the body might have valuable loot.')
+        prompt =  [{
+            type: 'list',
+            message: 'Loot the corpse?',
+            choices: ['Loot','Leave'],
+            name: 'choice'
+        }]
+
+        messages.push(function(){queuePrompt(prompt,callback)})
+        queueMessage(messages)
+
+        function callback(response){
+            if(response.choice == 'Loot'){
+                if(Math.floor(Math.random()*4) > 0){
+                    messages.push('You loot the corpse and find 100g')
+                    player.gold += 100
+                }
+                else{
+                    messages.push('Lucky! You find a valuable relic on his body')
+                    messages.push(function(){chooseRelic(1)})
+                }
+            }
+            else{
+                messages.push("You give the body a proper burial.", "The hard work strengthens your resolve")//Hidden stat resolve increase(determines final boss) 
+            }
+            queueMessage(messages)
+        }
+    } 
+}
+
 var shrine = {
     prompt:  [{
         type: 'list',
@@ -1096,4 +1139,4 @@ var shrine = {
 
 
 var events = [monster,monster,unique,unique,elite,campfire]
-fruit.event()
+corpse.event()
