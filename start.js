@@ -1122,8 +1122,9 @@ var goblinCamp = {
                 messages.push(function(){preBattle(new enemies.tier1.common.Goblin())})
             }
             else{
-                messages.push('You stay hidden.', 'As you watch the woman writhe, you are overcome with guilt', 'Your resolve weakens.')
+                messages.push('You stay hidden.', 'As you watch the woman writhe, you are overcome with guilt', 'Your resolve weakens.',move)
             }
+            queueMessage(messages)
         }
         messages.push(function(){queuePrompt(prompt,callback)})
         queueMessage(messages)
