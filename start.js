@@ -989,24 +989,11 @@ var beggar = {
 
 
 
-var unique = {
-    premessage: 'Thick trees obscure your view on this path',
-    uniquePool: [beggar,mimic,campfire,monster,shop],
-    event: function(){
-        var randomEvent = this.uniquePool[Math.floor(Math.random()*this.uniquePool.length)]
-        var messages = []
-        messages.push('You enter the thicket\n')
-        if (randomEvent.premessage){
-            messages.push(randomEvent.premessage)
-        }
-        messages.push( function(){randomEvent.event()})
-        queueMessage(messages)
-    }
-}
+
 
 //Tier 1 Events
 var fruit = {
-   
+    once: true,
     event: function(){
         var messages = []
         var choiceArray = [{name:'Eat the red fruit (+3 ATT)',value:{id:'red'}},{name: 'Eat the blue fruit (+3 DEF)',value:{id:'blue'}},{name: 'Eat the yellow fruit (+6 HP)',value:{id:'yellow'}}]
@@ -1074,6 +1061,7 @@ var fruit = {
 }
 
 var traveler1 = {
+    once: true,
     event: function(){
         var messages = []
         messages.push('While walking on the road you come across a traveler.', "Hail Knight! Where are you headed?", 'I suggest you turn back. Nothing beyond these woods but monsters and death.',
@@ -1083,6 +1071,7 @@ var traveler1 = {
 }
 
 var corpse ={
+    once: true,
     event: function(){
         var messages = []
         messages.push('While traveling you come across the corpse of another person.', 'On his skin you find the brand of the goddess.', 'You feel as though you should lay the body to rest.',
@@ -1116,6 +1105,33 @@ var corpse ={
     } 
 }
 
+var goblinCamp = {
+    event: function(){
+        var messages = []
+        messages.push('You come across a goblin camp.', 'A group of three goblins are dancing around a campfire.', 'They are bringing a bound woman to the fire.')
+        var prompt =  [{
+            type: 'list',
+            message: 'Do you save her?',
+            choices: ['Attack', 'Stay hidden'],
+            name: 'choice'
+        }]
+        function callback(response){
+            var messages = []
+            if(response == 'Attack'){
+                messages.push('You won\'t be able to live with yourself if you let this occur', 'You charge the monsters')
+                messages.push(function(){preBattle(new enemies.tier1.common.Goblin())})
+            }
+            else{
+                messages.push('You stay hidden.', 'As you watch the woman writhe, you are overcome with guilt', 'Your resolve weakens.',move)
+            }
+            queueMessage(messages)
+        }
+        messages.push(function(){queuePrompt(prompt,callback)})
+        queueMessage(messages)
+    }
+}
+
+
 var shrine = {
     prompt:  [{
         type: 'list',
@@ -1136,9 +1152,30 @@ var shrine = {
         })
     }
 }
+var uniquePool = [beggar,mimic,campfire,monster,shop,fruit,corpse,traveler1]
+
+
+var unique = {
+    premessage: 'Thick trees obscure your view.',
+    event: function(){
+        var randomIndex = Math.floor(Math.random()*uniquePool.length)
+        var randomEvent = uniquePool[randomIndex]
+        if(randomEvent.once){
+            uniquePool.splice(randomIndex,1)
+        }
+        
+        var messages = []
+        messages.push('You enter the thicket\n')
+        if (randomEvent.premessage){
+            messages.push(randomEvent.premessage)
+        }
+        messages.push( function(){randomEvent.event()})
+        queueMessage(messages)
+    }
+}
 
 //Tier 2 Events
 
 
 var events = [monster,monster,unique,unique,elite,campfire]
-corpse.event()
+goblinCamp.event()
