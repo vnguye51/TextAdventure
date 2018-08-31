@@ -1152,7 +1152,7 @@ var shrine = {
         })
     }
 }
-var uniquePool = [beggar,mimic,campfire,monster,shop,fruit,corpse,traveler1]
+var uniquePool = [beggar,mimic,campfire,monster,shop,fruit,corpse,traveler1,goblinCamp]
 
 
 var unique = {
@@ -1175,7 +1175,42 @@ var unique = {
 }
 
 //Tier 2 Events
+var voodooDoctor = {
+    preMessage: 'A tribesman is frantically waving his hands beckoning you to come. Based on his garb he seems to be a doctor of some sorts',
+    event: function(){
+        var messages = []
+        messages.push('"Come come!"', '"You look strong, yes very strong!"','The man leads you into a tent. You notice a single table with bloody splattered all over it',
+        "Lay down! Yes, lay down! With you, we can become closer to God.",'You are taken aback.')
 
+        prompt = [{
+            type: 'list',
+            message:  'Lay down or back away?',
+            choices: ['Lay Down', 'Leave'],
+            name: 'choice'
+        }]
+
+        messages.push(function(){queuePrompt(prompt,callback)})
+        queueMessage(messages)
+
+        function callback(response){
+            var messages = []
+            if (response.choice == 'Leave'){
+                messages.push('You slowly back away from the crazy doctor.', '"No matter, you\'ll be back"')
+            }
+            else{
+                messages.push('You lay down...', '...' , 'Suddenly the doctor clasps your hands and feet to the table', '"Don\'t worry this is all necessary"', 
+                    'He puts a blindfold and stuffs your mouth with cloth', 'You feel a sharp pain in your abdomen (-5 HP)', 'Blood from your body drips down and collects in a basin under the table (-5 HP)', 'The doctor chants some nonsense (-5 HP)',
+                    'Something sharp slides through your forhead (-10 HP)', 'You black out', '...', '...', '"Ah you\'re awake. Here it is, my masterpiece. You may keep it of course, for your hardwork."', 'He hands you a doll. It is warm and you can feel a pulse inside it.', 'Obtained Human Effigy',
+                    '"I\'m sure it will be very useful. Heheh."')
+                player.hp = Math.max(player.hp - 25, 1)
+            }
+            messages.push(move)
+            queueMessage(messages)
+
+        }
+    }
+    
+}
 
 var events = [monster,monster,unique,unique,elite,campfire]
-goblinCamp.event()
+voodooDoctor.event()
