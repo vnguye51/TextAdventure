@@ -14,7 +14,7 @@ var player = {
     tempAtt: 0,
     totalAtt: 0,
     multAtt: 1,
-    defense: 0,
+    defense: 10,
     tempDef: 0,
     maxHp : 36,
     hp : 36,
@@ -22,7 +22,7 @@ var player = {
     tier : 'tier1',
     gold : 10000,
     items: ['Health Potion'],
-    relics: [],
+    relics: ['Cooking Pan'],
 
 }
 
@@ -43,7 +43,7 @@ function start(){
             type: "list",
             message: "Choose your boon",
             name: "boon",
-            choices: ['A stronger weapon', 'A pendant', 'Money']
+            choices: ['Defense', 'Offense', 'Money','A pendant']
         }]
     var dream = [
         {
@@ -63,12 +63,27 @@ function start(){
     queuePrompt(name,function(response){
         player.name = response.username
         queuePrompt(boon,function(response){
-            player.boon = response.boon
+            if (response.boon == 'Money'){
+                player.gold += 200
+            }
+            else if(response.boon == 'Defense'){
+                console.log('Obtained Blue Lantern')
+                player.relics.push('Blue Lantern')
+                delete relicPool['Blue Lantern']
+            }
+            else if(response.boon == 'Offense'){
+                console.log('Obtained Red Lantern')
+                player.relics.push('Red Lantern')
+                delete relicPool['Red Lantern']
+            }
+            else(
+                console.log('You obtain a pendant')
+            )
             queuePrompt(dream,function(response){
                 player.dream = response.dream
                 queuePrompt(confirm,function(response){
                     if(response.confirm == 'Yes'){
-                        return queueMessage(["A warm light engulfs your body.", "You find yourself in a clearing, surrounded on all sides by forest. + \n",move])
+                        return queueMessage(["A warm light engulfs your body.", "You find yourself in a clearing, surrounded on all sides by forest. \n",move])
                     }
                     start()
                 })
@@ -103,17 +118,27 @@ function move(){
     }
 
     messages.push(player.pos + ' miles traveled.')
-    if(player.pos == 5){
-        messages.push('A quarter of the way there')
+    if(player.pos == 7){
+        messages.push("You see a shrine ahead")
+        messages.push(function(){shrine.event()})
+        queueMessage(messages)
+        return
+    }
+    if(player.pos == 9){
+        messages.push(campfire.premessage,function(){campfire.event()})
+        queueMessage(messages)
+        campfire.event()
     }
     if(player.pos == 10){
-        messages.push('Halfway there.')
+        messages.push('A lone knight clad in dark armour stands in your way')
+        messages.push(function(){preBattle(new enemies.bosses.blackkKnight())})
+        queueMessage(messages)
+        return
     }
-    if(player.pos == 15){
-        messages.push('Not much further.')
-    }
-    if(player.pos == 19){
-        messages.push('A great fortress looms before you.')
+    if(player.pos == 17){
+        messages.push(voodooDoctor.event())
+        queueMessage(messages)
+        return
     }
     if (player.pos == 29){
         messages.push("This is it.")
@@ -223,11 +248,8 @@ function preTurn(monster){
         }
     }
     player.totalAtt = (player.attack + player.tempAtt) * player.multAtt
-    messages.push('Your attack will deal ' + player.totalAtt + ' damage.')
     messages.push(monster.warning)
-    messages.push('Player ATT: ' + player.attack + ' ATT')
-    messages.push('Player DEF: ' + player.defense + ' DEF')
-    messages.push('Player HP: ' + player.hp)
+    messages.push('Player HP: ' + player.hp+'/'+player.maxHp + '\tPlayer ATT: ' + player.attack + ' ATT\tPlayer DEF: ' + player.defense + ' DEF')
     messages.push(monster.name + 'HP: ' + monster.hp)
     messages.push(function(){battleTurn(monster)})
     queueMessage(messages)
@@ -247,6 +269,11 @@ function battleTurn(monster){
         }
         else if (response.choice == 'Item'){
             messages = messages.concat([inventory])
+        }
+        else if(response.choice == 'Defend'){
+            player.tempDef += player.defense
+            messages = messages.concat(['You guard.',function(){monster.ai(player)}])
+
         }
         else{
             monster.hp -= player.totalAtt
@@ -270,7 +297,7 @@ function postBattle(monster){
     var messages = []
     for(var i = 0; i < player.relics.length; i++){
         if(relicList[player.relics[i]].postEffect){
-            relicList[player.relics[i]].postEffect(monster)
+            relicList[player.relics[i]].postEffect(player)
             messages.push(relicList[player.relics[i]].postMessage)
             messages.push('')
         }
@@ -415,7 +442,7 @@ var tier1Enemies = {
             this.relic = false
             this.attack1= function(player){
                 _this = this
-                var damage = this.attack - player.defense
+                var damage = Math.max(0,this.attack - player.tempDef)
                 player.hp -= damage
                 queueMessage(['Goblin attacks for ' + damage + ' damage',function(){preTurn(_this)}])
                 
@@ -436,7 +463,7 @@ var tier1Enemies = {
             this.relic = false
             this.attack1= function(player){
                 _this = this
-                var damage = this.attack - player.defense
+                var damage = Math.max(0,this.attack - player.tempDef)
                 player.hp -= damage
                 queueMessage(['Orc attacks for ' + damage + ' damage',function(){preTurn(_this)}])
                 
@@ -457,7 +484,7 @@ var tier1Enemies = {
             this.relic = false
             this.attack1 = function(player){
                 _this = this 
-                var calcDamage = this.damage - player.defense
+                var calcDamage = this.damage - player.tempDef
                 player.hp -= calcDamage
                 this.warning = 'Wizard is chanting...'
                 queueMessage(['Wizard attacks for ' + calcDamage + ' damage',function(){preTurn(_this)}])
@@ -474,7 +501,7 @@ var tier1Enemies = {
             }
             this.attack4 = function(player){
                 _this = this
-                var calcDamage = this.damage - player.defense
+                var calcDamage = this.damage - player.tempDef
                 player.hp -= calcDamage
                 this.warning = this.name + ' is about to attack for 5 damage.'
                 this.damage = 5
@@ -492,15 +519,15 @@ var tier1Enemies = {
         Treant: function(){
             this.hp = 30
             this.name = 'Treant'
-            this.attack = 5
-            this.damage = 5
-            this.warning = this.name + ' is about to attack for 5 damage.'
+            this.attack = 15
+            this.damage = 15
+            this.warning = this.name + ' is about to attack for 15 damage.'
             this.death = this.name + ' let\'s out a pained howl before falling silent.'
             this.gold = 50,
             this.relic = true
             this.attack1= function(player){
                 _this = this
-                var damage = this.attack - player.defense
+                var damage = Math.max(0,this.attack - player.tempDef)
                 player.hp -= damage
                 queueMessage(['Treant attacks for ' + damage + ' damage',function(){preTurn(_this)}])
                 
@@ -517,15 +544,15 @@ var tier2Enemies = {
     direWolf: function(){
         this.hp = 30
         this.name = 'Dire Wolf'
-        this.attack = 5
-        this.damage = 5
-        this.warning = this.name + ' is about to attack for 5 damage.'
+        this.attack = 12
+        this.damage = 12
+        this.warning = this.name + ' is about to attack for 12 damage.'
         this.death = this.name + ' let\'s out a pained howl before falling silent.'
         this.gold = 50,
         this.relic = false
         this.attack1= function(player){
             _this = this
-            var damage = this.attack - player.defense
+            var damage = Math.max(0,this.attack - player.tempDef)
             player.hp -= damage
             queueMessage(['Dire Wolf attacks for ' + damage + ' damage',function(){preTurn(_this)}])
             
@@ -538,15 +565,15 @@ var tier2Enemies = {
     shaman: function(){
         this.hp = 30
         this.name = 'Shaman'
-        this.attack = 5
-        this.damage = 5
-        this.warning = this.name + ' is about to attack for 5 damage.'
+        this.attack = 12
+        this.damage = 12
+        this.warning = this.name + ' is about to attack for 12 damage.'
         this.death = this.name + ' let\'s out a pained howl before falling silent.'
         this.gold = 50,
         this.relic = false
         this.attack1= function(player){
             _this = this
-            var damage = this.attack - player.defense
+            var damage = Math.max(0,this.attack - player.tempDef)
             player.hp -= damage
             queueMessage(['Shaman attacks for ' + damage + ' damage',function(){preTurn(_this)}])
             
@@ -559,15 +586,15 @@ var tier2Enemies = {
     mandragora: function(){
         this.hp = 30
         this.name = 'Mandragora'
-        this.attack = 5
-        this.damage = 5
-        this.warning = this.name + ' is about to attack for 5 damage.'
+        this.attack = 10
+        this.damage = 10
+        this.warning = this.name + ' is about to attack for 10 damage.'
         this.death = this.name + ' let\'s out a pained howl before falling silent.'
         this.gold = 50,
         this.relic = false
         this.attack1= function(player){
             _this = this
-            var damage = this.attack - player.defense
+            var damage = Math.max(0,this.attack - player.tempDef)
             player.hp -= damage
             queueMessage(['Mandragora attacks for ' + damage + ' damage',function(){preTurn(_this)}])
             
@@ -580,15 +607,15 @@ var tier2Enemies = {
     shamanKing: function(){
         this.hp = 30
         this.name = 'Shaman King'
-        this.attack = 5
-        this.damage = 5
-        this.warning = this.name + ' is about to attack for 5 damage.'
+        this.attack = 18
+        this.damage = 18
+        this.warning = this.name + ' is about to attack for 18 damage.'
         this.death = this.name + ' let\'s out a pained howl before falling silent.'
         this.gold = 50,
         this.relic = true
         this.attack1= function(player){
             _this = this
-            var damage = this.attack - player.defense
+            var damage = Math.max(0,this.attack - player.tempDef)
             player.hp -= damage
             queueMessage(['Shaman King attacks for ' + damage + ' damage',function(){preTurn(_this)}])
             
@@ -606,15 +633,15 @@ var tier3Enemies = {
     royalGuard: function(){
         this.hp = 30
         this.name = 'Royal Guard'
-        this.attack = 5
-        this.damage = 5
-        this.warning = this.name + ' is about to attack for 5 damage.'
+        this.attack = 20
+        this.damage = 20
+        this.warning = this.name + ' is about to attack for 20 damage.'
         this.death = this.name + ' let\'s out a pained howl before falling silent.'
         this.gold = 50,
         this.relic = false
         this.attack1= function(player){
             _this = this
-            var damage = this.attack - player.defense
+            var damage = Math.max(0,this.attack - player.tempDef)
             player.hp -= damage
             queueMessage(['Royal Guard attacks for ' + damage + ' damage',function(){preTurn(_this)}])
             
@@ -627,15 +654,15 @@ var tier3Enemies = {
     archWizard: function(){
         this.hp = 30
         this.name = 'Arch Wizard'
-        this.attack = 5
-        this.damage = 5
-        this.warning = this.name + ' is about to attack for 5 damage.'
+        this.attack = 20
+        this.damage = 20
+        this.warning = this.name + ' is about to attack for 20 damage.'
         this.death = this.name + ' let\'s out a pained howl before falling silent.'
         this.gold = 50,
         this.relic = false
         this.attack1= function(player){
             _this = this
-            var damage = this.attack - player.defense
+            var damage = Math.max(0,this.attack - player.tempDef)
             player.hp -= damage
             queueMessage(['Arch Wizard attacks for ' + this.damage + ' damage',function(){preTurn(_this)}])
             
@@ -647,16 +674,16 @@ var tier3Enemies = {
 
     abyss: function(){
         this.hp = 30
-        this.name = 'Goblin'
-        this.attack = 5
-        this.damage = 5
-        this.warning = this.name + ' is about to attack for 5 damage.'
+        this.name = 'Abyss'
+        this.attack = 22
+        this.damage = 22
+        this.warning = this.name + ' is about to attack for 22 damage.'
         this.death = this.name + ' let\'s out a pained howl before falling silent.'
         this.gold = 50,
         this.relic = true
         this.attack1= function(player){
             _this = this
-            var damage = this.attack - player.defense
+            var damage = Math.max(0,this.attack - player.tempDef)
             player.hp -= damage
             queueMessage(['Goblin attacks for ' + damage + ' damage',function(){preTurn(_this)}])
             
@@ -673,15 +700,15 @@ var uniqueEnemies = {
     Mimic: function(){
         this.hp = 30
         this.name = 'Mimic'
-        this.attack = 5
-        this.damage = 5
-        this.warning = this.name + ' is about to attack for 5 damage.'
+        this.attack = 10
+        this.damage = 10
+        this.warning = this.name + ' is about to attack for 10 damage.'
         this.death = this.name + ' let\'s out a pained howl before falling silent.'
         this.gold = 50,
         this.relic = true
         this.attack1= function(player){
             _this = this
-            var damage = this.attack - player.defense
+            var damage = Math.max(0,this.attack - player.tempDef)
             player.hp -= damage
             queueMessage(['Mimic attacks for ' + damage + ' damage',function(){preTurn(_this)}])
             
@@ -705,7 +732,7 @@ var bosses = {
         this.relic = true
         this.attack1 = function(player){
             _this = this 
-            var calcDamage = this.damage - player.defense
+            var calcDamage = this.damage - player.tempDef
             player.hp -= this.damage 
             this.warning = this.name + 'is gathering strength.'
             queueMessage(['The Dark Knight swings his sword.', calcDamage +' damage!', function(){preTurn(_this)}])
@@ -717,7 +744,7 @@ var bosses = {
             this.warning = this.name + ' is about to attack for ' + this.damage + ' damage.'
             queueMessage(['WRAH!', 'Now face me!', 'The Dark Knight gains +10ATT', function(){preTurn(_this)}])
         }
-        this.pattern = [attack1,attack2]
+        this.pattern = [this.attack1,this.attack2]
         this.ai = function(player){
             this.pattern[0](player)
             this.pattern.push(this.pattern.shift)
@@ -725,17 +752,17 @@ var bosses = {
     },
 
     hydra: function(){
-        this.hp = 30
+        this.hp = 120
         this.name = 'Hydra'
-        this.attack = 5
-        this.damage = 5
-        this.warning = this.name + ' is about to attack for 5 damage.'
+        this.attack = 25
+        this.damage = 25
+        this.warning = this.name + ' is about to attack for 25 damage.'
         this.death = this.name + ' let\'s out a pained howl before falling silent.'
         this.gold = 50,
         this.relic = true,
         this.attack1= function(player){
             _this = this
-            var damage = this.attack - player.defense
+            var damage = Math.max(0,this.attack - player.tempDef)
             player.hp -= damage
             queueMessage(['Royal Guard attacks for ' + damage + ' damage',function(){preTurn(_this)}])
             
@@ -745,32 +772,46 @@ var bosses = {
         }
     },
 
-    magicConstruct: function(){
-        this.hp = 30
-        this.name = 'Royal Guard'
-        this.attack = 5
-        this.damage = 5
-        this.warning = this.name + ' is about to attack for 5 damage.'
-        this.death = this.name + ' let\'s out a pained howl before falling silent.'
-        this.gold = 50
-        this.relic = true
-        this.attack1= function(player){
-            _this = this
-            var damage = this.attack - player.defense
-            player.hp -= damage
-            queueMessage(['Royal Guard attacks for ' + damage + ' damage',function(){preTurn(_this)}])
+    // magicConstruct: function(){
+    //     this.hp = 30
+    //     this.name = 'Royal Guard'
+    //     this.attack = 5
+    //     this.damage = 5
+    //     this.warning = this.name + ' is about to attack for 5 damage.'
+    //     this.death = this.name + ' let\'s out a pained howl before falling silent.'
+    //     this.gold = 50
+    //     this.relic = true
+    //     this.attack1= function(player){
+    //         _this = this
+    //         var damage = Math.max(0,this.attack - player.tempDef)
+    //         player.hp -= damage
+    //         queueMessage(['Royal Guard attacks for ' + damage + ' damage',function(){preTurn(_this)}])
             
-        }
-        this.ai = function(player){
-            this.attack1(player)
-        }
-    },
+    //     }
+    //     this.ai = function(player){
+    //         this.attack1(player)
+    //     }
+    // },
 
     ruler: function(){
         this.hp = 400
         this.name = 'The Ruler'
         this.attack = 50
         this.damage = 50
+        this.warning = this.name + ' is about to attack for 50 damage.'
+        this.death = this.name + ' let\'s out a pained howl before falling silent.'
+        this.gold = 50,
+        this.relic = false,
+        this.attack1= function(player){
+            _this = this
+            var damage = Math.max(0,this.attack - player.tempDef)
+            player.hp -= damage
+            queueMessage(['The Ruler attacks for ' + damage + ' damage',function(){preTurn(_this)}])
+            
+        }
+        this.ai = function(player){
+            this.attack1(player)
+        }
     },
 
     goddess: function(){
@@ -1016,7 +1057,7 @@ var fruit = {
                 messages.push('Sweet and delicious... (+3 ATT)')
             }
             else if(response.choice.id == 'yellow'){
-                player.defense += 3
+                player.tempDef += 3
                 messages.push('Tart. (+3 DEF)')
             }
             else{
@@ -1098,7 +1139,7 @@ var corpse ={
                 }
             }
             else{
-                messages.push("You give the body a proper burial.", "The hard work strengthens your resolve")//Hidden stat resolve increase(determines final boss) 
+                messages.push("You give the body a proper burial.", "The hard work strengthens your resolve", move)//Hidden stat resolve increase(determines final boss) 
             }
             queueMessage(messages)
         }
@@ -1117,7 +1158,7 @@ var goblinCamp = {
         }]
         function callback(response){
             var messages = []
-            if(response == 'Attack'){
+            if(response.choice == 'Attack'){
                 messages.push('You won\'t be able to live with yourself if you let this occur', 'You charge the monsters')
                 messages.push(function(){preBattle(new enemies.tier1.common.Goblin())})
             }
@@ -1203,6 +1244,7 @@ var voodooDoctor = {
                     'Something sharp slides through your forhead (-10 HP)', 'You black out', '...', '...', '"Ah you\'re awake. Here it is, my masterpiece. You may keep it of course, for your hardwork."', 'He hands you a doll. It is warm and you can feel a pulse inside it.', 'Obtained Human Effigy',
                     '"I\'m sure it will be very useful. Heheh."')
                 player.hp = Math.max(player.hp - 25, 1)
+                player.relics.push('Human Effigy')
             }
             messages.push(move)
             queueMessage(messages)
@@ -1213,4 +1255,4 @@ var voodooDoctor = {
 }
 
 var events = [monster,monster,unique,unique,elite,campfire]
-voodooDoctor.event()
+start()

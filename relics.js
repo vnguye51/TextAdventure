@@ -201,8 +201,8 @@ microGarden.moveMessage = 'Your microgreens are ready. You eat some sprouts (+2 
 
 var cookingPan = new Relic(150)
 cookingPan.postEffect = function(player){
-    cookingPan.postMessage = 'Ssssssssssss..... You eat some fresh meat. (+8 HP, HP: ' +player.hp + '/' + player.maxHp
     player.hp = Math.max(player.maxHp,player.hp+8)
+    cookingPan.postMessage = 'Ssssssssssss..... You eat some fresh meat. (+8 HP, HP: ' +player.hp + '/' + player.maxHp + ')'
 }
 //Restore +8 HP after every fight
 //Starting relic
