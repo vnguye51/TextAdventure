@@ -1137,6 +1137,8 @@ var shrine = {
     }
 }
 
+//Tier 2 Events
+
 
 var events = [monster,monster,unique,unique,elite,campfire]
 corpse.event()
