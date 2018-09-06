@@ -16,19 +16,19 @@ var crimsonGarnet = new Relic(150)
 var cobaltSapphire = new Relic(150)
     cobaltSapphire.preMessage = 'Cobalt Sapphire steels your skin. +5DEF'
     cobaltSapphire.preEffect = function(player){
-    player.tempDef += 5
+    player.defense += 5
     }
 
 var lapis = new Relic(150)
     lapis.preMessage = 'The Lapis Lazuli steels your skin. +4DEF'
     lapis.preEffect = function(player){
-    player.tempDef += 4
+    player.defense += 4
     }
 
 var aquamarine = new Relic(150)
     aquamarine.preMessage = 'The Lapis Lazuli steels your skin. +6DEF'
     aquamarine.preEffect = function(player){
-    player.tempDef += 6
+    player.defense += 6
     }
 
 //Every enemy killed gives +1 ATT
@@ -37,7 +37,7 @@ var blueLantern = new Relic(150)
     blueLantern.storedDef = 0
     blueLantern.preMessage = 'There are no souls in your Blue Lantern.'
     blueLantern.preEffect = function(player){
-        player.tempDef += blueLantern.storedDef
+        player.defense += blueLantern.storedDef
     }
     blueLantern.postMessage = 'The monster\'s soul is sucked into your Blue Lantern'
     blueLantern.postEffect = function(player){
@@ -63,7 +63,7 @@ var scroll = new Relic(150) //Enemies drop 50% more gold
 
     scroll.postEffect = function(player,monster){
         player.gold += Math.floor(monster.gold*0.5)
-        scroll.postMessage = 'Alchemical Scroll duplicates the gold dropped from the enemy ' + Math.floor(monster.gold*0.5) +'g'
+        scroll.postMessage = 'Alchemical Scroll duplicates the gold dropped from the enemy +' + Math.floor(monster.gold*0.5) +'g'
     }
 
 var turnwheel = new Relic(150)
@@ -90,22 +90,21 @@ var theCoin = new Relic(150)
         }
         else if(theCoin.countdown == 1){
             theCoin.conMessage = 'The Coin flips. (+5 DEF,-5ATT)'
-            player.tempDef += 5
+            player.defense += 5
             player.tempAtt -= 5
         }
         else{
             theCoin.countdown = 2
             theCoin.conMessage = 'The Coin flips. (+5 ATT, -5 DEF)'
             player.tempAtt += 5
-            player.tempDef -= 5
+            player.defense -= 5
         }
     }
 
 var effigy = new Relic(150)
-    //Need to add a check during the opponents damagestep
     effigy.damageEffect = function(player){
         if (player.hp <= 0){
-            effigy.damageMessage = 'The Human Effigy enters Death\'s Door in your stead.'
+            effigy.hurtMessage = 'The Human Effigy enters Death\'s Door in your stead.'
             player.hp = 1
             player.relics.splice(player.relics.indexOf('Effigy'),1)
             ///Delete the relic keys on the next step
@@ -128,7 +127,7 @@ var luckyDice = new Relic(150)
 var midasHeart = new Relic(150)
     midasHeart.preEffect = function(player){
         var bonusDef = Math.floor(player.gold/50)
-        midasHeart.preMessage = 'Midas\'s heart covers you in gold. (+' + player.gold+'g)'
+        midasHeart.preMessage = 'Midas\'s heart covers you in gold. (+' + bonusDef + ' DEF)'
         player.tempDef += bonusDef
     }
 //For every 50 gold you have in your inventory gain +1 def
@@ -202,7 +201,7 @@ microGarden.moveMessage = 'Your microgreens are ready. You eat some sprouts (+2 
 var cookingPan = new Relic(150)
 cookingPan.postEffect = function(player){
     player.hp = Math.max(player.maxHp,player.hp+8)
-    cookingPan.postMessage = 'Ssssssssssss..... You eat some fresh meat. (+8 HP, HP: ' +player.hp + '/' + player.maxHp + ')'
+    cookingPan.postMessage = 'Ssssssssssss..... You grilled some fresh meat on your Cooking Pan. (+8 HP, HP: ' +player.hp + '/' + player.maxHp + ')'
 }
 //Restore +8 HP after every fight
 //Starting relic
@@ -221,8 +220,6 @@ var piggyBank = new Relic(150)
         piggyBank.moveMessage = 'The Piggy Bank compounds your interest. (+' + bonusGold + 'g)'
     }
 
-var reagent = new Relic(150)
-    //logic is inside the potion step
 
 var relicList ={
     'Blood Ruby' : bloodRuby,
@@ -249,9 +246,7 @@ var relicList ={
     'Piggy Bank' : piggyBank,
     'Crimson Garnet': crimsonGarnet,
     'Lapis Lazuli': lapis,
-    'Foul Reagent': reagent,
     'Aquamarine' : aquamarine,
-
 }
 
 var relicPool={
@@ -277,7 +272,6 @@ var relicPool={
     'Piggy Bank' : piggyBank,
     'Crimson Garnet': crimsonGarnet,
     'Lapis Lazuli': lapis,
-    'Foul Reagent': reagent,
     'Aquamarine' : aquamarine,
 }
 
